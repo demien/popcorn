@@ -1,0 +1,2 @@
+class Guard(object):
+    pass
