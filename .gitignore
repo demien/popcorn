@@ -63,3 +63,5 @@ target/
 
 # local pip egg-info
 popcorn.egg-info/
+
+.DS_Store
