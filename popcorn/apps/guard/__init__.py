@@ -38,4 +38,4 @@ class Guard(object):
             concurrency = 10 if concurrency > 10 else concurrency
             cmd = 'celery worker -Q %s -c %s' % (queue, concurrency)
             print '[Guard] exec command: %s' % cmd
-            # subprocess.Popen(cmd.split(' '))
+            subprocess.Popen(cmd.split(' '))

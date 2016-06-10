@@ -35,9 +35,17 @@ class Planner(object):
 
     def plan(self):
         while True:
-            timestampe = int(round(time.time() * TIME_SCALE))
+            previous_timestampe = int(round(time.time() * TIME_SCALE))
+            previous_status = taste_soup(self.task_queue)
             time.sleep(INTERVAL)
-            status = taste_soup()
-            result = self.strategy.apply(status=status, time=timestampe)
+            timestampe = int(round(time.time() * TIME_SCALE))
+            status = taste_soup(self.task_queue)
+            result = self.strategy.apply(
+                previous_status=previous_status,
+                previous_time=previous_timestampe,
+                status=status,
+                time=timestampe
+            )
             plan = {self.task_queue: result}
+            print 'plan ', plan
             self.rpc_client.start('popcorn.apps.hub:hub_set_plan', plan=plan)
