@@ -1,14 +1,40 @@
 
+import logging
+from multiprocessing import Process, Queue
+
+logger = logging.getLogger(__name__)
+
+
+STRATEGY_MAP = {
+    'simple': 'popcorn.apps.planner.strategy.SimpleStrategy:SimpleStrategy'
+}
+
+
 class Planner(object):
 
-    def __init__(self):
-        self.start()
+    def __init__(self, queue, strategy, **kwargs):
+        self.queue = queue
+        path, class_name = STRATEGY_MAP.get(strategy).split(':', 1)
+        try:
+            strategy_class = getattr(__import__(path, fromlist=[class_name]), class_name)
+        except ImportError as ie:
+            logger.error("Can not import {0} from {1}, Tracker: {2}".format(
+                path, class_name, ie.message))
+            raise
+
+        self.result_queue = Queue()
+        self.strategy = strategy_class(self.result_queue)
+        self.plan()
 
     def plan(self):
-        pass
+        process = Process(target=self.strategy.apply)
+        process.start()
+
+        while process.is_alive():
+            try:
+                process.join(1)
+            except KeyboardInterrupt:
+                logging.info("Stopping plan ...")
 
     def send_plan(self):
         pass
-
-    def start(self):
-        print 'start planner'
