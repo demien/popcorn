@@ -6,4 +6,4 @@ class PlannerCommand(BaseCommand):
 
     def run_from_argv(self, prog_name, argv=None, **_kwargs):
         client = PyroClient()
-        client.run('popcorn.apps.planner:Planner')
+        client.start('popcorn.apps.planner:Planner')

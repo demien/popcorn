@@ -22,6 +22,10 @@ class Hub(object):
     def start(self):
         self.blueprint.start(self)
 
-    def foo(self):
-        while True:
-            print 'in foo'
+    @staticmethod
+    def instruction(foo=None):
+        return 'start 5 worker on Queue popcorn'
+
+
+def hub_instruction():
+    return Hub.instruction()

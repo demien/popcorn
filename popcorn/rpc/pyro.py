@@ -26,6 +26,6 @@ class PyroClient(BaseRPCClient):
     def __init__(self, server='popcorn'):
         self.rpc_server = Pyro4.Proxy("PYRONAME:%s" % server)    # use name server object lookup uri shortcut
 
-    def run(self, func_path):
-        self.rpc_server.dispatch(func_path)
+    def start(self, func_path):
+        return self.rpc_server.dispatch(func_path)
 

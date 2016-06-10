@@ -1,7 +1,8 @@
 from popcorn.commands import BaseCommand
+from popcorn.apps.guard import Guard
 
 
 class GuardCommand(BaseCommand):
 
-    def run(self, **kwargs):
-        print 'hello popcorn, guard'
+    def run_from_argv(self, prog_name, argv=None, **_kwargs):
+        Guard().start()
