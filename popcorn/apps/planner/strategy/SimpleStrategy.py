@@ -7,10 +7,6 @@ from popcorn.apps.utils.broker_util import taste_soup
 
 class SimpleStrategy(BaseStrategy):
 
-    def __init__(self, result_queue):
-        super(SimpleStrategy, self).__init__()
-        self.result_queue = result_queue
-
     def apply(self, **kwargs):
         previous_status = kwargs.get('status')
         previous_time = kwargs.get('time')
@@ -24,4 +20,4 @@ class SimpleStrategy(BaseStrategy):
         salt_add = salt * ceil(delta / threshold) if delta > 0 else 0
         print delta, salt_add
 
-        self.result_queue.put(salt_add)
+        return salt_add

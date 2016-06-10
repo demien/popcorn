@@ -1,6 +1,6 @@
 import time
 import logging
-from multiprocessing import Queue, Pool
+from multiprocessing import Process
 
 from popcorn.apps.constants import TIME_SCALE, INTERVAL
 from popcorn.apps.utils.broker_util import taste_soup
@@ -25,10 +25,10 @@ class Planner(object):
                 path, class_name, ie.message))
             raise
 
-        self.result_queue = Queue()
-        self.strategy = strategy_class(self.result_queue)
-        p = Pool(1)
-        p.apply_async(self.plan)
+        self.strategy = strategy_class()
+        process = Process(target=self.plan)
+        process.start()
+        process.join()
         print "Process started"
 
     def plan(self):
@@ -38,11 +38,6 @@ class Planner(object):
             status = taste_soup()
             time.sleep(INTERVAL)
             self.strategy.apply(status=status, time=timestampe)
-            try:
-                result = self.result_queue.get()
-                print 'result: {}'.format(result)
-            except KeyboardInterrupt:
-                logging.info("Stopping plan ...")
 
     def send_plan(self):
         pass
