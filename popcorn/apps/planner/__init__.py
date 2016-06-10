@@ -5,6 +5,7 @@ from multiprocessing import Process
 from popcorn.apps.constants import TIME_SCALE, INTERVAL
 from popcorn.apps.hub import Hub
 from popcorn.apps.utils.broker_util import taste_soup
+from popcorn.rpc.pyro import PyroClient
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ STRATEGY_MAP = {
 class Planner(object):
 
     def __init__(self, queue, strategy, **kwargs):
+        self.rpc_client = PyroClient()
         self.task_queue = queue
         path, class_name = STRATEGY_MAP.get(strategy).split(':', 1)
         try:
@@ -37,4 +39,5 @@ class Planner(object):
             time.sleep(INTERVAL)
             status = taste_soup()
             result = self.strategy.apply(status=status, time=timestampe)
-            Hub.set_plan({'queue': self.task_queue, 'plan': result})
+            plan = {self.task_queue: result}
+            self.rpc_client.start('popcorn.apps.hub:hub_set_plan', plan=plan)

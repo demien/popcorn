@@ -23,7 +23,7 @@ class Guard(object):
             time.sleep(5)
 
     def enroll(self):
-        self.rpc_client.start_with_return('popcorn.apps.hub:hub_enroll', id=self.id)
+        self.rpc_client.start('popcorn.apps.hub:hub_enroll', id=self.id)
 
     def get_order(self):
         return self.rpc_client.start_with_return('popcorn.apps.hub:hub_send_order', id=self.id)
