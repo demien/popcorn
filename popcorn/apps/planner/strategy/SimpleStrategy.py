@@ -10,7 +10,7 @@ class SimpleStrategy(BaseStrategy):
     def apply(self, **kwargs):
         previous_status = kwargs.get('status')
         previous_time = kwargs.get('time')
-        self.taste(previous_status, previous_time)
+        return self.taste(previous_status, previous_time)
 
     def taste(self, previous_status, previous_time, salt=5, threshold=10):
         taste_at = int(round(time.time() * TIME_SCALE))
@@ -18,6 +18,4 @@ class SimpleStrategy(BaseStrategy):
 
         delta = (soup_taste - previous_status) * TIME_SCALE / (taste_at - previous_time)
         salt_add = salt * ceil(delta / threshold) if delta > 0 else 0
-        print delta, salt_add
-
-        return salt_add
+        return int(salt_add)
