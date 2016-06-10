@@ -1,5 +1,6 @@
 from celery import bootsteps
 from celery.bootsteps import RUN, TERMINATE
+from collections import defaultdict
 
 
 class Hub(object):
@@ -13,6 +14,9 @@ class Hub(object):
             'popcorn.apps.hub.components:RPCServer',
         ])
     
+    PLAN = defaultdict(int)
+    MACHINES = []
+
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
@@ -23,13 +27,25 @@ class Hub(object):
         self.blueprint.start(self)
 
     @staticmethod
-    def send_order():
-        return {'popcorn': 1}
+    def send_order(id):
+        order = defaultdict(int)
+        for queue, task in Hub.PLAN.iteritems():
+            order[queue] = int(task / len(self.machines))
+        return order
 
     @staticmethod
     def set_plan(plan):
         print '[Hub] set plan: %s' % str(plan)
+        Hub.PLAN.update(update)
+
+    @staticmethod
+    def enroll(id):
+        print '[Hub] new guard enroll: %s' % id
+        Hub.MACHINES.append(id)
 
 
-def hub_send_order():
-    return Hub.send_order()
+def hub_send_order(id):
+    return Hub.send_order(id)
+
+def hub_enroll(id):
+    return Hub.enroll(id)
