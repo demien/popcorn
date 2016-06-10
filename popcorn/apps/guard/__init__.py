@@ -15,7 +15,7 @@ class Guard(object):
 
     def get_order(self):
         client = PyroClient()
-        return client.start('popcorn.apps.hub:hub_send_order')
+        return client.start_with_return('popcorn.apps.hub:hub_send_order')
 
     def collect_machine_info(self):
         print '[Guard] collect info:  CUP 90%'

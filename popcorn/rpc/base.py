@@ -22,4 +22,9 @@ class RPCDispatcher(object):
 
     def dispatch(self, func_path, *args, **kwargs):
         print("[RPC Client] Dispatch %s" % func_path)
+        # return instantiate(func_path, **kwargs)
+        instantiate(func_path, **kwargs)
+
+    def dispatch_with_return(self, func_path, *args, **kwargs):
+        print("[RPC Client] Dispatch %s" % func_path)
         return instantiate(func_path, **kwargs)
