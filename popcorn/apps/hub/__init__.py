@@ -26,6 +26,10 @@ class Hub(object):
     def send_order():
         return {'popcorn': 1}
 
+    @staticmethod
+    def set_plan(plan):
+        print '[Hub] set plan: %s' % str(plan)
+
 
 def hub_send_order():
     return Hub.send_order()

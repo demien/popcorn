@@ -28,7 +28,6 @@ class Planner(object):
         self.strategy = strategy_class()
         process = Process(target=self.plan)
         process.start()
-        # process.join()
         print "Process started"
 
     def plan(self):
