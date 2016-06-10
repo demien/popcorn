@@ -3,6 +3,7 @@ import logging
 from multiprocessing import Process
 
 from popcorn.apps.constants import TIME_SCALE, INTERVAL
+from popcorn.apps.hub import Hub
 from popcorn.apps.utils.broker_util import taste_soup
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,5 @@ class Planner(object):
             timestampe = int(round(time.time() * TIME_SCALE))
             time.sleep(INTERVAL)
             status = taste_soup()
-            time.sleep(INTERVAL)
-            self.strategy.apply(status=status, time=timestampe)
-
-    def send_plan(self):
-        pass
+            result = self.strategy.apply(status=status, time=timestampe)
+            Hub.set_plan({'queue': self.task_queue, 'plan': result})
