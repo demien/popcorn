@@ -24,7 +24,7 @@ class Hub(object):
 
     @staticmethod
     def send_order():
-        return 'start 5 worker on Queue popcorn'
+        return {'popcorn': 1}
 
 
 def hub_send_order():

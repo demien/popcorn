@@ -33,11 +33,11 @@ class Planner(object):
         while True:
             timestampe = int(round(time.time() * TIME_SCALE))
             status = taste_soup()
+            time.sleep(INTERVAL)
             self.strategy.apply(status=status, time=timestampe)
             try:
-                result = self.queue.get()
+                result = self.result_queue.get()
                 print 'result: {}'.format(result)
-                time.sleep(INTERVAL)
             except KeyboardInterrupt:
                 logging.info("Stopping plan ...")
 
