@@ -21,6 +21,5 @@ class BaseRPCClient(object):
 class RPCDispatcher(object):
 
     def dispatch(self, func_path, *args, **kwargs):
-        print("Dispatch %s" % func_path)
-        instantiate(func_path, **kwargs)
-        # r.start()
+        print("[RPC Client] Dispatch %s" % func_path)
+        return instantiate(func_path, **kwargs)

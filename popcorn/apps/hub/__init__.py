@@ -23,9 +23,9 @@ class Hub(object):
         self.blueprint.start(self)
 
     @staticmethod
-    def instruction(foo=None):
+    def send_order():
         return 'start 5 worker on Queue popcorn'
 
 
-def hub_instruction():
-    return Hub.instruction()
+def hub_send_order():
+    return Hub.send_order()

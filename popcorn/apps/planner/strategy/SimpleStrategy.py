@@ -18,7 +18,7 @@ class SimpleStrategy(BaseStrategy):
     def apply(self):
         self.taste()
 
-    def taste(self, salt=5, interval=10, threshold=10):
+    def taste(self, salt=5, interval=2, threshold=10):
         scale = 10000
         while True:
             last_taste_at = int(round(time.time() * scale))
