@@ -5,5 +5,5 @@ class BaseStrategy(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def apply(self):
+    def apply(self, **kwargs):
         raise NotImplementedError()
