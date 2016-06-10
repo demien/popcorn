@@ -9,7 +9,6 @@ class PlannerCommand(BaseCommand):
     def run_from_argv(self, prog_name, argv=None, command=None):
         command = sys.argv[0] if command is None else command
         argv = sys.argv[1:] if argv is None else argv
-        import ipdb; ipdb.set_trace()
         # parse options before detaching so errors can be handled.
         options, args = self.prepare_args(
             *self.parse_options(prog_name, argv, command))
@@ -17,4 +16,7 @@ class PlannerCommand(BaseCommand):
         client.start('popcorn.apps.planner:Planner', queue=options['queue'], strategy='simple')
 
     def get_options(self):
-        return tuple(Option('-Q', '--queue'), Option('-S', 'strategy', default='simple'))
+        return (
+            Option('-Q', '--queue'),
+            Option('-S', '--strategy', default='simple')
+        )
