@@ -4,17 +4,13 @@ from collections import defaultdict
 import os
 
 
-
-
 class Hub(object):
 
     class Blueprint(bootsteps.Blueprint):
-
         """Hub bootstep blueprint."""
         name = 'Hub'
         default_steps = set([
-            # 'popcorn.apps.hub.components:PlannerServer',
-            'popcorn.apps.hub.components:RPCServer',
+            'popcorn.rpc.components:RPCServer',  # fix me, dynamic load rpc portal
         ])
 
     PLAN = defaultdict(int)
@@ -25,7 +21,6 @@ class Hub(object):
         self.steps = []
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self, **kwargs)
-        
 
     def start(self):
         self.blueprint.start(self)

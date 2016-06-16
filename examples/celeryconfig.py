@@ -6,3 +6,4 @@ CELERYD_POOL_RESTARTS = True
 CELERY_IMPORTS = (
     "tasks",
 )
+HUB_IP = '172.17.0.6'
