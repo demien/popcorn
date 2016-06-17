@@ -41,13 +41,14 @@ class Guard(object):
                 print '[Guard] get order: %s' % str(order)
                 self.follow_order(order)
             stats = self.collect_machine_info()
-            order = self.get_order(stats)
             print '[Guard] get order: %s' % str(order)
             self.follow_order(order)
             time.sleep(5)
 
-    def get_order(self, rpc_client):
-        return self.rpc_client.start_with_return('popcorn.apps.hub:hub_send_order', id=self.id)
+    def get_order(self,rpc_client):
+        return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order',
+                                                 id=self.id,
+                                                 stats=self.collect_machine_info())
 
     def collect_machine_info(self):
         print '[Guard] collect info:  CUP %s%%' % psutil.cpu_percent()
