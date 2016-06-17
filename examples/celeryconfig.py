@@ -5,5 +5,5 @@ CELERYD_POOL_RESTARTS = True
 CELERY_IMPORTS = (
     "tasks",
 )
-HUB_IP = '172.17.0.14'
+HUB_IP = '192.168.1.52'
 BROKER_URL = 'redis://%s:6379/0' % HUB_IP
