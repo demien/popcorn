@@ -66,10 +66,10 @@ class Planner(object):
     def plan(self):
         while True:
             previous_timestampe = int(round(time.time() * TIME_SCALE))
-            previous_status = taste_soup(self.queue)
+            previous_status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             time.sleep(INTERVAL)
             timestampe = int(round(time.time() * TIME_SCALE))
-            status = taste_soup(self.queue)
+            status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             result = self.strategy.apply(
                 previous_status=previous_status,
                 previous_time=previous_timestampe,
