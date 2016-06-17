@@ -1,4 +1,3 @@
-BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -6,4 +5,7 @@ CELERYD_POOL_RESTARTS = True
 CELERY_IMPORTS = (
     "tasks",
 )
-HUB_IP = '172.17.0.6'
+HUB_IP = '172.17.0.13'
+BROKER_URL = 'redis://%s:6379/0' % HUB_IP
+
+print BROKER_URL

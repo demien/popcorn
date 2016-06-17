@@ -5,4 +5,4 @@ from popcorn.apps.guard import Guard
 class GuardCommand(BaseCommand):
 
     def run_from_argv(self, prog_name, argv=None, **_kwargs):
-        Guard().start()
+        Guard(self.app).start()

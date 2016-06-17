@@ -3,7 +3,7 @@ from celery.task.control import inspect
 
 def taste_soup(queue):
     try:
-        with Connection('redis://localhost:6379/0') as conn:
+        with Connection(BROKER_URL) as conn:
             q = conn.SimpleQueue(queue)
             return q.qsize()
     except Exception as e:

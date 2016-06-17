@@ -7,7 +7,7 @@ from multiprocessing import Process
 from popcorn.apps.constants import TIME_SCALE, INTERVAL
 from popcorn.apps.hub import Hub
 from popcorn.apps.utils.broker_util import taste_soup
-from popcorn.rpc.pyro import PyroClient, RPCClient
+from popcorn.rpc.pyro import RPCClient
 
 logger = logging.getLogger(__name__)
 
