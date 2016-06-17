@@ -1,2 +1,4 @@
 celery
 psutil
+flower
+Pyro4
