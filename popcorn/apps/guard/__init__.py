@@ -8,7 +8,6 @@ import psutil
 
 
 class Guard(object):
-
     class Blueprint(bootsteps.Blueprint):
         """Hub bootstep blueprint."""
         name = 'Guard'
@@ -64,9 +63,12 @@ class Guard(object):
             print '[Guard] exec command: %s' % cmd
             subprocess.Popen(cmd.split(' '))
 
+    def collect_memeory(self):
+        return psutil.virtual_memory()
+
 
 class Register(bootsteps.StartStopStep):
-    requires = (RPCClient, )
+    requires = (RPCClient,)
 
     def __init__(self, p, **kwargs):
         pass
@@ -89,7 +91,7 @@ class Register(bootsteps.StartStopStep):
 
 
 class Loop(bootsteps.StartStopStep):
-    requires = (Register, )
+    requires = (Register,)
 
     def __init__(self, p, **kwargs):
         pass
