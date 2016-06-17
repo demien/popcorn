@@ -30,7 +30,12 @@ class Hub(object):
         order = defaultdict(int)
         for queue, task in Hub.PLAN.iteritems():
             order[queue] = int(task / len(Hub.MACHINES))
+        Hub.clear_plan()
         return order
+
+    @staticmethod
+    def clear_plan():
+        Hub.PLAN = defaultdict(int)
 
     @staticmethod
     def set_plan(plan):

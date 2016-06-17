@@ -52,7 +52,7 @@ class Guard(object):
             if concurrency <= 0:
                 continue
             concurrency = 10 if concurrency > 10 else concurrency
-            cmd = 'celery worker -Q %s -c %s' % (queue, concurrency)
+            cmd = 'celery worker -Q %s --autoscale=%s,1' % (queue, concurrency)
             print '[Guard] exec command: %s' % cmd
             subprocess.Popen(cmd.split(' '))
 
