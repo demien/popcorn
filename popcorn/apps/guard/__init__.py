@@ -1,8 +1,10 @@
+from popcorn.rpc.pyro import PyroClient
 import time
 import subprocess
 import socket
 from celery import bootsteps
 from popcorn.rpc.pyro import RPCClient
+import psutil
 
 
 class Guard(object):
@@ -39,13 +41,20 @@ class Guard(object):
             if order:
                 print '[Guard] get order: %s' % str(order)
                 self.follow_order(order)
+            stats = self.collect_machine_info()
+            order = self.get_order(stats)
+            print '[Guard] get order: %s' % str(order)
+            self.follow_order(order)
             time.sleep(5)
 
     def get_order(self, rpc_client):
         return self.rpc_client.start_with_return('popcorn.apps.hub:hub_send_order', id=self.id)
 
     def collect_machine_info(self):
-        print '[Guard] collect info:  CUP 90%'
+        print '[Guard] collect info:  CUP %s%%' % psutil.cpu_percent()
+        print psutil.cpu_percent()
+        print self.collect_memeory()
+        return {'memory': self.collect_memeory()}
 
     def follow_order(self, order):
         for queue, concurrency in order.iteritems():
