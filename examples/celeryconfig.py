@@ -7,5 +7,3 @@ CELERY_IMPORTS = (
 )
 HUB_IP = '172.17.0.13'
 BROKER_URL = 'redis://%s:6379/0' % HUB_IP
-
-print BROKER_URL
