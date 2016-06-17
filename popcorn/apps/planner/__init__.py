@@ -77,9 +77,10 @@ class Planner(object):
                 time=timestampe
             )
             plan = {self.queue: result}
+            print '[Planner] Heart beat on queue: %s' % self.queue
             if result:
                 print '[Planner] create new plan: %s' % str(plan)
-            self.rpc_client.start('popcorn.apps.hub:hub_set_plan', plan=plan)
+                self.rpc_client.start('popcorn.apps.hub:hub_set_plan', plan=plan)
 
 
 class Strategy(bootsteps.StartStopStep):
@@ -96,7 +97,6 @@ class Strategy(bootsteps.StartStopStep):
         return self
 
     def start(self, p):
-        print 'start Strategy'
         pass
 
     def stop(self, p):

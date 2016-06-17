@@ -15,7 +15,7 @@ class PyroServer(BaseRPCServer):
 
     def _register(self):
         uri = self.daemon.register(RPCDispatcher, DISPATHCER_SERVER_NAME)   # register the greeting maker as a Pyro object
-        print '[RPC Server] start server %s' % uri
+        print '[RPC Server] Register Uri %s' % uri
 
     def start(self):
         self._register()

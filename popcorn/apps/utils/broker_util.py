@@ -7,4 +7,4 @@ def taste_soup(queue):
             q = conn.SimpleQueue(queue)
             return q.qsize()
     except Exception as e:
-        print e
+        return 0
