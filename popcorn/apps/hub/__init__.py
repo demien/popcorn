@@ -10,7 +10,7 @@ class Hub(object):
         """Hub bootstep blueprint."""
         name = 'Hub'
         default_steps = set([
-            'popcorn.rpc.components:RPCServer',  # fix me, dynamic load rpc portal
+            'popcorn.rpc.pyro:RPCServer',  # fix me, dynamic load rpc portal
         ])
 
     PLAN = defaultdict(int)
