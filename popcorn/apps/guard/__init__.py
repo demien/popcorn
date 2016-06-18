@@ -96,8 +96,8 @@ class Guard(object):
         if number > 0:
             for _ in range(number):
                 if self.machine.health:
-                    print '[Guard] Exec command: %s' % str(['celery', 'worker', '-Q', queue, '--autoscale', '-c', '1'])
-                    self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue, '--autoscale', '-c', '1']))
+                    print '[Guard] Exec command: %s' % str(['celery', 'worker', '-Q', queue, '--autoscale'])
+                    self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue, '--autoscale']))
                     time.sleep(1)
                 else:
                     print '[Guard] not more resource on this machine'
