@@ -155,10 +155,13 @@ class Hub(object):
         while worker_number > 0:
             for id, machine in Hub.MACHINES.items():
                 if machine.health:
-                    machine.add_plan(queue, 1)
-                    worker_number -= 1
+                    cnt = 1
+                    if id == 'gyang-2.lan.appannie.com@192.168.1.243':
+                        cnt = 2
+                    machine.add_plan(queue, cnt)
+                    worker_number -= cnt
                 else:
-                    print "Machine >>> unhealth"
+                    print "[Machine] %s unhealth" % str(id)
             if not [machine for machine in Hub.MACHINES.values() if machine.health]:
                 print '[Hub] warning , remain %d workers' % worker_number
                 remain_worker = worker_number

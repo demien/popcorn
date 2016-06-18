@@ -9,7 +9,7 @@ def add(x, y):
 
 @task
 def say(something):
-    time.sleep(0.2)
+    time.sleep(1)
 
 
 @task
