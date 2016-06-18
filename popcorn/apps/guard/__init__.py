@@ -1,3 +1,4 @@
+from popcorn.apps.hub import Machine
 from popcorn.rpc.pyro import PyroClient
 import time
 import subprocess
@@ -26,6 +27,8 @@ class Guard(object):
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
         self.processes = defaultdict(list)
+        self.machine = Machine(self.id)
+        self.machine.update_stats(self.machine_info)
         # queue:[] worker process list
 
     def qsize(self, queue):
@@ -54,13 +57,14 @@ class Guard(object):
 
     def get_order(self, rpc_client):
         print ">>>>rpc_client", rpc_client
+        self.machine.update_stats(self.machine_info)
         return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order',
                                             id=self.id,
                                             stats=self.machine_info)
 
     @property
     def machine_info(self):
-        print '[Guard] collect info:  CUP %s%%' % psutil.cpu_percent()
+        print '[Guard] collect info:  CUP IDLE%s%%' % self.cpu_percent.idle
         rdata = {'memory': self.memory,
                  'cpu': self.cpu_percent,
                  'workers': self.worker_stats}
@@ -86,7 +90,10 @@ class Guard(object):
         print '[Guard] Queue[%s], %d Workers' % (queue, number)
         if number > 0:
             for _ in range(number):
-                self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue]))
+                if self.machine.health:
+                    self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue]))
+                else:
+                    print '[Guard] not more resource on this machine'
         elif number < 0:
             for _ in range(abs(number)):
                 plist = self.processes[queue]
