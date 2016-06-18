@@ -45,7 +45,6 @@ class Guard(object):
     def loop(self, rpc_client):
         while True:
             try:
-                print '[Guard] Heart beat %s' % self.id
                 order = self.get_order(rpc_client)
                 print '[Guard] get order: %s' % str(order)
                 if order:
@@ -57,7 +56,6 @@ class Guard(object):
                 traceback.print_exc()
 
     def get_order(self, rpc_client):
-        print ">>>>rpc_client", rpc_client
         self.machine.update_stats(self.machine_info)
         return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order',
                                             id=self.id,
@@ -69,7 +67,6 @@ class Guard(object):
         rdata = {'memory': self.memory,
                  'cpu': self.cpu_percent,
                  'workers': self.worker_stats}
-        print rdata
         return rdata
 
     def follow_order(self, order):

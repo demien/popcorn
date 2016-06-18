@@ -56,15 +56,15 @@ class Machine(object):
         # import random
         # return {'pop': random.randint(1, 6)}
 
-    def update_plan(self, queue, worker_number):
-        if self.health:
-            support = self.memory - 100 * 1024 ** 2
-            if worker_number <= support:
-                self._plan[queue] = worker_number
-            else:
-                self._plan[queue] = support
-        print '[Machine] %s take %d workers' % (self.id, self._plan.get(queue, 0))
-        return self._plan[queue]  # WARNING should always return workers you take in
+    # def update_plan(self, queue, worker_number):
+    #     if self.health:
+    #         support = self.memory / 100 * 1024 ** 2
+    #         if worker_number <= support:
+    #             self._plan[queue] = worker_number
+    #         else:
+    #             self._plan[queue] = support
+    #     print '[Machine] %s take %d workers' % (self.id, self._plan.get(queue, 0))
+    #     return self._plan[queue]  # WARNING should always return workers you take in
 
     def add_plan(self, queue, worker_number):
         self._plan[queue] += worker_number
