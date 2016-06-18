@@ -96,23 +96,22 @@ class Guard(object):
         if number > 0:
             for _ in range(number):
                 if self.machine.health:
-                    print '[Guard] Exec command: %s' % str(['celery', 'worker', '-Q', queue, '--autoscale'])
-                    self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue, '--autoscale']))
+                    print '[Guard] Exec command: %s' % str(['celery', 'worker', '-Q', queue])
+                    self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue]))
                     time.sleep(1)
                 else:
                     print '[Guard] not more resource on this machine'
         elif number < 0:
-            pass
-            # for _ in range(abs(number)):
-            #     plist = self.processes[queue]
-            #     if len(plist) >= 1:
-            #         p = plist.pop()
-            #         # p.send_signal(2)  # send Ctrl + C to subprocess
-            #         p.terminate()  # send Ctrl + C to subprocess
-            #         p.wait()  # wait this process quit
-            #     else:
-            #         # no more workers
-            #         return
+            for _ in range(abs(number)):
+                plist = self.processes[queue]
+                if len(plist) >= 1:
+                    p = plist.pop()
+                    # p.send_signal(2)  # send Ctrl + C to subprocess
+                    p.terminate()  # send Ctrl + C to subprocess
+                    p.wait()  # wait this process quit
+                else:
+                    # no more workers
+                    return
 
     @property
     def memory(self):
