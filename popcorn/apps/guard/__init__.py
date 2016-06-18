@@ -41,27 +41,27 @@ class Guard(object):
 
     def loop(self, rpc_client):
         while True:
-            print rpc_client
-            print '[Guard] Heart beat %s' % self.id
-            self.collect_machine_info()
-            order = self.get_order(rpc_client)
-            if order:
+            try:
+                print '[Guard] Heart beat %s' % self.id
+                order = self.get_order(rpc_client)
                 print '[Guard] get order: %s' % str(order)
-                self.follow_order(order)
-            stats = self.collect_machine_info()
-            print '[Guard] get order: %s' % str(order)
-            self.follow_order(order)
-            time.sleep(5)
+                if order:
+                    self.follow_order(order)
+                time.sleep(5)
+            except Exception:
+                import traceback
+                traceback.print_exc()
 
     def get_order(self, rpc_client):
         print ">>>>rpc_client", rpc_client
         return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order',
                                             id=self.id,
-                                            stats=self.collect_machine_info())
+                                            stats=self.machine_info)
 
-    def collect_machine_info(self):
+    @property
+    def machine_info(self):
         print '[Guard] collect info:  CUP %s%%' % psutil.cpu_percent()
-        rdata = {'memory': self.memeory,
+        rdata = {'memory': self.memory,
                  'cpu': self.cpu_percent,
                  'workers': self.worker_stats}
         print rdata
@@ -83,6 +83,7 @@ class Guard(object):
         self.add_worker(queue, delta)
 
     def add_worker(self, queue, number=1):
+        print '[Guard] Queue[%s], %d Workers' % (queue, number)
         if number > 0:
             for _ in range(number):
                 self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue]))
@@ -94,15 +95,17 @@ class Guard(object):
                     p.send_signal(2)  # send Ctrl + C to subprocess
                     p.wait()  # wait this process quit
                 else:
+                    # no more workers
                     return
 
     @property
-    def memeory(self):
+    def memory(self):
         return psutil.virtual_memory()
 
     @property
     def cpu_percent(self):
-        return psutil.cpu_percent()
+        # return psutil.cpu_percent()
+        return psutil.cpu_times_percent()
 
     @property
     def worker_stats(self):

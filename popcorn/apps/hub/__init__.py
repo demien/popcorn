@@ -7,23 +7,37 @@ import os
 class Machine(object):
     RECORD_NUMBER = 100
 
+    _CPU_WINDOW_SIZE = 3
+    _CPU_THS = 0.8
+    _MEMORY_THS = 0.8
+
     def __init__(self, id):
         self.id = id
-        self.stats = []
-        self._plan = {
-        }
+        self._original_stats = []
+        self._plan = {}
 
     def update_stats(self, stats):
-        self.stats.append(stats)
-        if len(self.stats) > self.RECORD_NUMBER:
-            self.stats.pop(0)
+        self._original_stats.append(stats)
+        if len(self._original_stats) > self.RECORD_NUMBER:
+            self._original_stats.pop(0)
 
     @property
     def memory(self):
-        return self.stats[-1]['memory']['available']
+        if self._original_stats:
+            return self._original_stats[-1]['memory'].available
+        else:
+            return 0
+
+    @property
+    def cpu(self):
+        if len(self._original_stats) >= self._CPU_WINDOW_SIZE:
+            return sum([i['cpu'].idle for i in self._original_stats[-self._CPU_WINDOW_SIZE:]]) / float(
+                self._CPU_WINDOW_SIZE)
+        else:
+            return sum([i['cpu'].idle for i in self._original_stats]) / self._CPU_WINDOW_SIZE
 
     def health(self):
-        return True
+        return self.cpu <= self._CPU_THS and self.memory <= self._MEMORY_THS
 
     def get_worker_number(self, queue):
         return self._plan.get(queue, 0)
@@ -37,7 +51,11 @@ class Machine(object):
         return {'pop': random.randint(1, 6)}
 
     def update_plan(self, queue, worker):
-        self._plan[queue] = worker
+        print self.cpu
+        print self.memory
+        if self.health():
+            self._plan[queue] = worker
+        return worker
 
 
 class Task(object):
@@ -77,14 +95,21 @@ class Hub(object):
 
     @staticmethod
     def send_order(id, stats):
-        machine = Hub.MACHINES.get(id, Machine(id))
-        Hub.MACHINES[id] = machine
-        machine.update_stats(stats)
-        for queue, worker_number in Hub.PLAN.iteritems():
-            Hub.weighted_worker_scheduling(worker_number, queue)
-        machine_plan = machine.plan(*Hub.PLAN.keys())
-        print "Debug >>> machine:", id, machine_plan
-        return machine_plan
+        # print '[Hub] guard stats: %s, %s' % (id, stats)
+        try:
+            machine = Hub.MACHINES.get(id, Machine(id))
+            Hub.MACHINES[id] = machine
+            machine.update_stats(stats)
+            Hub.PLAN = {'qu': 10}
+            for queue, worker_number in Hub.PLAN.iteritems():
+                Hub.weighted_worker_scheduling(queue, worker_number)
+            machine_plan = machine.plan(*Hub.PLAN.keys())
+            print "[hub] Plan machine:", id, machine_plan
+            return machine_plan
+        except Exception:
+            import traceback
+            traceback.print_exc()
+        return {}
 
     def get_worker_number(self, queue):
         # get numbers we need
@@ -109,20 +134,21 @@ class Hub(object):
         pass
 
     @staticmethod
-    def weighted_worker_scheduling(worker_number, queue):
-        memory = 0
+    def weighted_worker_scheduling(queue, worker_number):
+
         for id, machine in Hub.MACHINES.items():
             # TODO: calculating here
-            machine.update_plan(queue, 5)
+
+            worker_number -= machine.update_plan(queue, worker_number)
 
 
-def hub_send_order(id, stats=None):
+def hub_send_order(id, stats):
     """
     :param id:
     :param stats: dict contains memory & cpu use
     :return:
     """
-    return Hub.send_order(id, stats=None)
+    return Hub.send_order(id, stats=stats)
 
 
 def hub_set_plan(plan=None):
