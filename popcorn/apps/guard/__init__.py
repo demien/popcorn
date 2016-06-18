@@ -51,6 +51,7 @@ class Guard(object):
                 if order:
                     self.follow_order(order)
                 time.sleep(5)
+                self.clear_worker()
             except Exception:
                 import traceback
                 traceback.print_exc()
@@ -84,7 +85,14 @@ class Guard(object):
     def update_worker(self, queue, worker_number):
         plist = self.processes[queue]
         delta = worker_number - len(plist)
-        self.add_worker(queue, delta)
+        if delta > 0:
+            self.add_worker(queue, delta)
+
+    def clear_worker(self):
+        for queue in self.processes.keys():
+            if self.qsize(queue) == 0:
+                print '[Guard] Clear Work For Empyt Queue'
+                self.add_worker(queue, number=-100)
 
     def add_worker(self, queue, number=1):
         print '[Guard] Queue[%s], %d Workers' % (queue, number)
@@ -92,6 +100,7 @@ class Guard(object):
             for _ in range(number):
                 if self.machine.health:
                     self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue]))
+                    time.sleep(1)
                 else:
                     print '[Guard] not more resource on this machine'
         elif number < 0:
@@ -99,7 +108,8 @@ class Guard(object):
                 plist = self.processes[queue]
                 if len(plist) >= 1:
                     p = plist.pop()
-                    p.send_signal(2)  # send Ctrl + C to subprocess
+                    # p.send_signal(2)  # send Ctrl + C to subprocess
+                    p.terminate()  # send Ctrl + C to subprocess
                     p.wait()  # wait this process quit
                 else:
                     # no more workers
