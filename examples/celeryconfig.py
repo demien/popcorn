@@ -6,4 +6,9 @@ CELERY_IMPORTS = (
     "tasks",
 )
 HUB_IP = '192.168.1.52'
+HUB_IP = '192.168.1.245'
+#HUB_IP = '192.168.31.243'
+
+
+#HUB_IP = '0.0.0.0'
 BROKER_URL = 'redis://%s:6379/0' % HUB_IP

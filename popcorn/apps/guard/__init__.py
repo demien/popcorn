@@ -5,6 +5,8 @@ import socket
 from celery import bootsteps
 from popcorn.rpc.pyro import RPCClient
 import psutil
+from collections import defaultdict
+from popcorn.apps.utils import taste_soup
 
 
 class Guard(object):
@@ -23,6 +25,11 @@ class Guard(object):
         self.id = self.get_id()
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
+        self.processes = defaultdict(list)
+        # queue:[] worker process list
+
+    def qsize(self, queue):
+        return taste_soup(queue, self.app.conf['BROKER_URL'])
 
     def get_id(self):
         name = socket.gethostname()
@@ -34,6 +41,7 @@ class Guard(object):
 
     def loop(self, rpc_client):
         while True:
+            print rpc_client
             print '[Guard] Heart beat %s' % self.id
             self.collect_machine_info()
             order = self.get_order(rpc_client)
@@ -45,27 +53,60 @@ class Guard(object):
             self.follow_order(order)
             time.sleep(5)
 
-    def get_order(self,rpc_client):
+    def get_order(self, rpc_client):
+        print ">>>>rpc_client", rpc_client
         return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order',
-                                                 id=self.id,
-                                                 stats=self.collect_machine_info())
+                                            id=self.id,
+                                            stats=self.collect_machine_info())
 
     def collect_machine_info(self):
         print '[Guard] collect info:  CUP %s%%' % psutil.cpu_percent()
-        print psutil.cpu_percent()
-        print self.collect_memeory()
-        return {'memory': self.collect_memeory()}
+        rdata = {'memory': self.memeory,
+                 'cpu': self.cpu_percent,
+                 'workers': self.worker_stats}
+        print rdata
+        return rdata
 
     def follow_order(self, order):
-        for queue, concurrency in order.iteritems():
-            if concurrency <= 0:
-                continue
-            cmd = 'celery worker -Q %s --autoscale=%s,1' % (queue, concurrency)
-            print '[Guard] exec command: %s' % cmd
-            subprocess.Popen(cmd.split(' '))
+        for queue, worker_number in order.iteritems():
+            print '[Guard] Queue[%s], Workers [%2d]' % (queue, worker_number)
+            # self.add_worker(queue, worker_number) if worker_number is delta, use this method
+            if self.qsize(queue) == 0:
+                print '[Guard] Queue[%s].size ==0 , Clear Workers' % queue
+                self.update_worker(queue, 0)
+            else:
+                self.update_worker(queue, worker_number)
 
-    def collect_memeory(self):
+    def update_worker(self, queue, worker_number):
+        plist = self.processes[queue]
+        delta = worker_number - len(plist)
+        self.add_worker(queue, delta)
+
+    def add_worker(self, queue, number=1):
+        if number > 0:
+            for _ in range(number):
+                self.processes[queue].append(subprocess.Popen(['celery', 'worker', '-Q', queue]))
+        elif number < 0:
+            for _ in range(abs(number)):
+                plist = self.processes[queue]
+                if len(plist) >= 1:
+                    p = plist.pop()
+                    p.send_signal(2)  # send Ctrl + C to subprocess
+                    p.wait()  # wait this process quit
+                else:
+                    return
+
+    @property
+    def memeory(self):
         return psutil.virtual_memory()
+
+    @property
+    def cpu_percent(self):
+        return psutil.cpu_percent()
+
+    @property
+    def worker_stats(self):
+        return {queue: len(plist) for queue, plist in self.processes.items()}
 
 
 class Register(bootsteps.StartStopStep):

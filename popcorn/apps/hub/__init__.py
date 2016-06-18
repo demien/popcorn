@@ -10,6 +10,8 @@ class Machine(object):
     def __init__(self, id):
         self.id = id
         self.stats = []
+        self._plan = {
+        }
 
     def update_stats(self, stats):
         self.stats.append(stats)
@@ -23,18 +25,34 @@ class Machine(object):
     def health(self):
         return True
 
+    def get_worker_number(self, queue):
+        return self._plan.get(queue, 0)
+
+    def current_worker_number(self, queue):
+        return 1
+
+    def plan(self, *queues):
+        # return {queue: self.get_worker_number(queue) for queue in queues}
+        import random
+        return {'pop': random.randint(1, 6)}
+
+    def update_plan(self, queue, worker):
+        self._plan[queue] = worker
+
 
 class Task(object):
+    memory_consume = 0
+
     def __init__(self):
         pass
 
-    @property
-    def memory_consume(self):
-        """
-        :return: int, maximum bytes this task need
-        50MB for current demo
-        """
-        return 50 * 1024 ** 2
+        # @property
+        # def memory_consume(self):
+        #     """
+        #     :return: int, maximum bytes this task need
+        #     50MB for current demo
+        #     """
+        #     return 50 * 1024 ** 2
 
 
 class Hub(object):
@@ -59,18 +77,18 @@ class Hub(object):
 
     @staticmethod
     def send_order(id, stats):
-        order = defaultdict(int)
         machine = Hub.MACHINES.get(id, Machine(id))
         Hub.MACHINES[id] = machine
         machine.update_stats(stats)
+        for queue, worker_number in Hub.PLAN.iteritems():
+            Hub.weighted_worker_scheduling(worker_number, queue)
+        machine_plan = machine.plan(*Hub.PLAN.keys())
+        print "Debug >>> machine:", id, machine_plan
+        return machine_plan
 
-        # TODO integration with YangGuang
-        NEED_WORKER = 100
-
-        for queue, task in Hub.PLAN.iteritems():
-            order[queue] = int(task / len(Hub.MACHINES))
-        Hub.clear_plan()
-        return order
+    def get_worker_number(self, queue):
+        # get numbers we need
+        return 10
 
     @staticmethod
     def clear_plan():
@@ -86,11 +104,16 @@ class Hub(object):
         Hub.MACHINES[id] = Machine(id)
 
     @staticmethod
-    def weighted_worker_scheduling(worker_number, task):
+    def balancing(queue, worker_number):
+        # update machine's work number
+        pass
+
+    @staticmethod
+    def weighted_worker_scheduling(worker_number, queue):
         memory = 0
         for id, machine in Hub.MACHINES.items():
-            memory += machine.memory
-        need_memory = worker_number * task.memory_consume
+            # TODO: calculating here
+            machine.update_plan(queue, 5)
 
 
 def hub_send_order(id, stats=None):
