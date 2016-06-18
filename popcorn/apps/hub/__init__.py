@@ -8,8 +8,8 @@ class Machine(object):
     RECORD_NUMBER = 100
 
     _CPU_WINDOW_SIZE = 3
-    _CPU_THS = 0.8
-    _MEMORY_THS = 0.8
+    _CPU_THS = 10  # 10 percent
+    _MEMORY_THS = 500 * 1024 ** 2  # if remain memeory < this number , not start more worker
 
     def __init__(self, id):
         self.id = id
@@ -37,7 +37,7 @@ class Machine(object):
             return sum([i['cpu'].idle for i in self._original_stats]) / self._CPU_WINDOW_SIZE
 
     def health(self):
-        return self.cpu <= self._CPU_THS and self.memory <= self._MEMORY_THS
+        return self.cpu >= self._CPU_THS and self.memory >= self._MEMORY_THS
 
     def get_worker_number(self, queue):
         return self._plan.get(queue, 0)
@@ -50,12 +50,17 @@ class Machine(object):
         import random
         return {'pop': random.randint(1, 6)}
 
-    def update_plan(self, queue, worker):
+    def update_plan(self, queue, worker_number):
         print self.cpu
         print self.memory
         if self.health():
-            self._plan[queue] = worker
-        return worker
+            support = self.memory * 100 * 1024 ** 2
+            if worker_number <= support:
+                self._plan[queue] = worker_number
+            else:
+                self._plan[queue] = support
+        print '[Machine %s] take %d workers' % (self.id, self._plan[queue])
+        return self._plan[queue]  # WARNING should always return workers you take in
 
 
 class Task(object):
@@ -100,9 +105,8 @@ class Hub(object):
             machine = Hub.MACHINES.get(id, Machine(id))
             Hub.MACHINES[id] = machine
             machine.update_stats(stats)
-            Hub.PLAN = {'qu': 10}
             for queue, worker_number in Hub.PLAN.iteritems():
-                Hub.weighted_worker_scheduling(queue, worker_number)
+                Hub.load_balancing(queue, worker_number)
             machine_plan = machine.plan(*Hub.PLAN.keys())
             print "[hub] Plan machine:", id, machine_plan
             return machine_plan
@@ -129,17 +133,11 @@ class Hub(object):
         Hub.MACHINES[id] = Machine(id)
 
     @staticmethod
-    def balancing(queue, worker_number):
-        # update machine's work number
-        pass
-
-    @staticmethod
-    def weighted_worker_scheduling(queue, worker_number):
-
+    def load_balancing(queue, worker_number):
         for id, machine in Hub.MACHINES.items():
-            # TODO: calculating here
-
             worker_number -= machine.update_plan(queue, worker_number)
+        if worker_number > 0:
+            print '[Hub] warning , remain %d workers' % worker_number
 
 
 def hub_send_order(id, stats):
