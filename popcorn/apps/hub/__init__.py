@@ -46,13 +46,12 @@ class Machine(object):
         return 1
 
     def plan(self, *queues):
-        # return {queue: self.get_worker_number(queue) for queue in queues}
-        import random
-        return {'pop': random.randint(1, 6)}
+        return {queue: self.get_worker_number(queue) for queue in queues}
+        # import random
+        # return {'pop': random.randint(1, 6)}
 
     def update_plan(self, queue, worker_number):
-        print self.cpu
-        print self.memory
+        print '[Machine %s] cpu:%s , memory:%s MB' % (self.id, self.cpu, self.memory / 1024 ** 2)
         if self.health():
             support = self.memory * 100 * 1024 ** 2
             if worker_number <= support:
