@@ -1,4 +1,4 @@
-from popcorn.apps.hub import Machine
+from popcorn.apps.guard.machine import Machine
 from popcorn.rpc.pyro import PyroClient
 import time
 import subprocess
@@ -11,6 +11,7 @@ from popcorn.apps.utils import taste_soup
 
 
 class Guard(object):
+
     class Blueprint(bootsteps.Blueprint):
         """Hub bootstep blueprint."""
         name = 'Guard'
@@ -23,7 +24,6 @@ class Guard(object):
     def __init__(self, app):
         self.app = app or self.app
         self.steps = []
-        self.id = self.get_id()
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
         self.processes = defaultdict(list)
@@ -34,7 +34,8 @@ class Guard(object):
     def qsize(self, queue):
         return taste_soup(queue, self.app.conf['BROKER_URL'])
 
-    def get_id(self):
+    @property
+    def id(self):
         name = socket.gethostname()
         ip = socket.gethostbyname(name)
         return '%s@%s' % (name, ip)
@@ -119,7 +120,6 @@ class Guard(object):
 
     @property
     def cpu_percent(self):
-        # return psutil.cpu_percent()
         return psutil.cpu_times_percent()
 
     @property
