@@ -1,44 +1,34 @@
+import abc
+import psutil
+import socket
+from collections import defaultdict
+from datetime import datetime
+
+
 class Machine(object):
 
-    RECORD_NUMBER = 100
+    SNAPSHOT_SIZE = 10
 
     _CPU_WINDOW_SIZE = 5
-    _CPU_THS = 10  # 10 percent
-    _MEMORY_THS = 500 * 1024 ** 2  # if remain memeory < this number , not start more worker
 
-    def __init__(self, id):
-        self.id = id
-        self._original_stats = []
+    def __init__(self):
+        self.hardware = Hardware()
+        self.camera = Camera(self)
+        self.snapshots = []  # lastest n snapshot
         self._plan = defaultdict(int)
 
-    def update_stats(self, stats):
-        print '[Machine] %s cpu:%s , memory:%s MB' % (self.id, self.cpu, self.memory / 1024 ** 2)
-        self._original_stats.append(stats)
-        if len(self._original_stats) > self.RECORD_NUMBER:
-            self._original_stats.pop(0)
-
     @property
-    def memory(self):
-        if self._original_stats:
-            return self._original_stats[-1]['memory'].available
-        else:
-            return self._MEMORY_THS + 100
+    def id(self):
+        name = socket.gethostname()
+        ip = socket.gethostbyname(name)
+        return '%s@%s' % (name, ip)
 
-    @property
-    def cpu(self):
-        if len(self._original_stats) >= self._CPU_WINDOW_SIZE:
-            # return sum([i['cpu'].idle for i in self._original_stats[-self._CPU_WINDOW_SIZE:]]) / float(
-            #     self._CPU_WINDOW_SIZE)
-            if sum([1 for i in self._original_stats[-self._CPU_WINDOW_SIZE:] if i['cpu'].idle < 5]) > 1:
-                return 100
-            else:
-                return 0
-        else:
-            return 50
-
-    @property
-    def health(self):
-        return self.cpu >= self._CPU_THS and self.memory >= self._MEMORY_THS
+    def snapshot(self):
+        snapshot = self.camera.snapshot()
+        if len(self.snapshots) >= self.SNAPSHOT_SIZE:
+            self.snapshots.pop(0)
+        self.snapshots.append(snapshot)
+        return snapshot
 
     def get_worker_number(self, queue):
         return self._plan[queue]
@@ -48,21 +38,87 @@ class Machine(object):
 
     def plan(self, *queues):
         return {queue: self.get_worker_number(queue) for queue in queues}
-        # import random
-        # return {'pop': random.randint(1, 6)}
-
-    # def update_plan(self, queue, worker_number):
-    #     if self.health:
-    #         support = self.memory / 100 * 1024 ** 2
-    #         if worker_number <= support:
-    #             self._plan[queue] = worker_number
-    #         else:
-    #             self._plan[queue] = support
-    #     print '[Machine] %s take %d workers' % (self.id, self._plan.get(queue, 0))
-    #     return self._plan[queue]  # WARNING should always return workers you take in
 
     def add_plan(self, queue, worker_number):
         self._plan[queue] += worker_number
 
     def clear_plan(self):
         self._plan = defaultdict(int)
+
+
+class Component(object):
+    __metaclass__ = abc.ABCMeta
+
+    @property
+    def name(self):
+        raise NotImplementedError()
+    
+    @property
+    def value(self):
+        raise NotImplementedError()
+
+    @property
+    def healthy(self):
+        raise NotImplementedError()
+
+
+class CPU(Component):
+
+    IDLE_THRESHOLD = 30  # percentage
+
+    @property
+    def value(self):
+        return psutil.cpu_times_percent()
+
+    @property
+    def name(self):
+        return 'cpu'
+
+    @property
+    def healthy(self):
+        return self.value.idle > self.IDLE_THRESHOLD
+
+
+class Memory(Component):
+
+    G = 1024 * 1024 * 1024  # gigabyte
+    AVAILABLE_USAGE_THRESHOLD = 2 * G
+    AVAILABLE_PERCENTAGE_THRESHOLD = 40  # percentage
+
+    @property
+    def value(self):
+        return psutil.virtual_memory()
+
+    @property
+    def name(self):
+        return 'memory'
+
+    @property
+    def healthy(self):
+        return (self.value.available > self.AVAILABLE_USAGE_THRESHOLD) or \
+                (self.value.percent < (100 - self.AVAILABLE_PERCENTAGE_THRESHOLD))
+
+
+class Hardware(object):
+
+    COMPONENTS = (CPU, Memory)
+
+    def __init__(self):
+        self._assembly()
+
+    def _assembly(self):
+        for component in self.COMPONENTS:
+            setattr(self, component().name, component())
+
+
+
+class Camera(object):
+    """camera take snapshot for machine hardware"""
+    def __init__(self, machine):
+        self.machine = machine
+
+    def snapshot(self):
+        snapshot = {'time': datetime.now()}
+        for component in self.machine.hardware.COMPONENTS:
+            picture[component().name] = component().value
+        return snapshot
