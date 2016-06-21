@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 STRATEGY_MAP = {
-    'simple': 'popcorn.apps.planner.strategy.SimpleStrategy:SimpleStrategy'
+    'simple': 'popcorn.apps.planner.strategy.simple:SimpleStrategy'
 }
 
 

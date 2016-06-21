@@ -27,18 +27,11 @@ class Guard(object):
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
         self.processes = defaultdict(list)
-        self.machine = Machine(self.id)
-        self.machine.update_stats(self.machine_info)
-        # queue:[] worker process list
-
-    def qsize(self, queue):
-        return taste_soup(queue, self.app.conf['BROKER_URL'])
+        self.machine = Machine()
 
     @property
     def id(self):
-        name = socket.gethostname()
-        ip = socket.gethostbyname(name)
-        return '%s@%s' % (name, ip)
+        self.machine.id
 
     def start(self):
         self.blueprint.start(self)
@@ -46,7 +39,7 @@ class Guard(object):
     def loop(self, rpc_client):
         while True:
             try:
-                order = self.get_order(rpc_client)
+                order = self.heartbeat(rpc_client)
                 if order:
                     print '[Guard] get order: %s' % str(order)
                     self.follow_order(order)
@@ -56,29 +49,22 @@ class Guard(object):
                 import traceback
                 traceback.print_exc()
 
-    def get_order(self, rpc_client):
-        self.machine.update_stats(self.machine_info)
-        return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order',
-                                            id=self.id,
-                                            stats=self.machine_info)
+    def heartbeat(self, rpc_client):
+        snapshot = self.machine.snapshot()
+        return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order', id=self.id, stats=self.snapshot)
 
-    @property
-    def machine_info(self):
-        print '[Guard] collect info:  CUP IDLE%s%%' % self.cpu_percent.idle
-        rdata = {'memory': self.memory,
-                 'cpu': self.cpu_percent,
-                 'workers': self.worker_stats}
-        return rdata
+    # @property
+    # def machine_info(self):
+    #     print '[Guard] collect info:  CUP IDLE%s%%' % self.cpu_percent.idle
+    #     rdata = {'memory': self.memory,
+    #              'cpu': self.cpu_percent,
+    #              'workers': self.worker_stats}
+    #     return rdata
 
     def follow_order(self, order):
         for queue, worker_number in order.iteritems():
             print '[Guard] Queue[%s], Workers [%2d]' % (queue, worker_number)
-            # self.add_worker(queue, worker_number) if worker_number is delta, use this method
-            if self.qsize(queue) == 0:
-                print '[Guard] Queue[%s].size ==0 , Clear Workers' % queue
-                self.update_worker(queue, 0)
-            else:
-                self.update_worker(queue, worker_number)
+            self.update_worker(queue, worker_number)
 
     def update_worker(self, queue, worker_number):
         plist = self.processes[queue]
@@ -114,13 +100,8 @@ class Guard(object):
                     # no more workers
                     return
 
-    @property
-    def memory(self):
-        return psutil.virtual_memory()
-
-    @property
-    def cpu_percent(self):
-        return psutil.cpu_times_percent()
+    def qsize(self, queue):
+        return taste_soup(queue, self.app.conf['BROKER_URL'])
 
     @property
     def worker_stats(self):

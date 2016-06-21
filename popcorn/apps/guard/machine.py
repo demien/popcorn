@@ -23,6 +23,10 @@ class Machine(object):
         ip = socket.gethostbyname(name)
         return '%s@%s' % (name, ip)
 
+    @property
+    def healthy(self):
+        return self.hardware.healthy
+
     def snapshot(self):
         snapshot = self.camera.snapshot()
         if len(self.snapshots) >= self.SNAPSHOT_SIZE:
@@ -101,15 +105,18 @@ class Memory(Component):
 
 class Hardware(object):
 
-    COMPONENTS = (CPU, Memory)
+    COMPONENTS = (CPU(), Memory())
 
     def __init__(self):
         self._assembly()
 
     def _assembly(self):
         for component in self.COMPONENTS:
-            setattr(self, component().name, component())
+            setattr(self, component.name, component)
 
+    @property
+    def healthy(self):
+        return all([c.healthy for c in self.COMPONENTS])
 
 
 class Camera(object):
