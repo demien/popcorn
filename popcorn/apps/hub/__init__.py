@@ -79,7 +79,7 @@ class Hub(object):
     @staticmethod
     def enroll(id):
         print '[Hub] new guard enroll: %s' % id
-        Hub.MACHINES[id] = Machine(id)
+        Hub.MACHINES[id] = Machine()
 
     @staticmethod
     def load_balancing(queue, worker_number):

@@ -24,14 +24,14 @@ class Guard(object):
     def __init__(self, app):
         self.app = app or self.app
         self.steps = []
-        self.blueprint = self.Blueprint(app=self.app)
-        self.blueprint.apply(self)
         self.processes = defaultdict(list)
         self.machine = Machine()
+        self.blueprint = self.Blueprint(app=self.app)
+        self.blueprint.apply(self)
 
     @property
     def id(self):
-        self.machine.id
+        return self.machine.id
 
     def start(self):
         self.blueprint.start(self)
