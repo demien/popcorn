@@ -43,28 +43,21 @@ class Guard(object):
                 if order:
                     print '[Guard] get order: %s' % str(order)
                     self.follow_order(order)
-                time.sleep(5)
-                self.clear_worker()
             except Exception:
                 import traceback
                 traceback.print_exc()
+            finally:
+                time.sleep(5)
 
     def heartbeat(self, rpc_client):
         snapshot = self.machine.snapshot()
-        return rpc_client.start_with_return('popcorn.apps.hub:hub_send_order', id=self.id, stats=self.snapshot)
-
-    # @property
-    # def machine_info(self):
-    #     print '[Guard] collect info:  CUP IDLE%s%%' % self.cpu_percent.idle
-    #     rdata = {'memory': self.memory,
-    #              'cpu': self.cpu_percent,
-    #              'workers': self.worker_stats}
-    #     return rdata
+        return rpc_client.start_with_return('popcorn.apps.hub:hub_guard_heartbeat', machine=self.machine)
 
     def follow_order(self, order):
-        for queue, worker_number in order.iteritems():
-            print '[Guard] Queue[%s], Workers [%2d]' % (queue, worker_number)
-            self.update_worker(queue, worker_number)
+        print '[Guard] follow order:'
+        # for queue, worker_number in order.iteritems():
+        #     print '[Guard] Queue[%s], Workers [%2d]' % (queue, worker_number)
+        #     self.update_worker(queue, worker_number)
 
     def update_worker(self, queue, worker_number):
         plist = self.processes[queue]
@@ -118,7 +111,7 @@ class Register(bootsteps.StartStopStep):
         return True
 
     def create(self, p):
-        p.rpc_client.start('popcorn.apps.hub:hub_enroll', id=p.id)
+        p.rpc_client.start('popcorn.apps.hub:hub_guard_register', machine=p.machine)
         return self
 
     def start(self, p):

@@ -1,23 +1,12 @@
+import math
 import os
+import traceback
 from celery import bootsteps
 from celery.bootsteps import RUN, TERMINATE
 from collections import defaultdict
 from popcorn.apps.guard.machine import Machine
-
-
-class Task(object):
-    memory_consume = 0
-
-    def __init__(self):
-        pass
-
-        # @property
-        # def memory_consume(self):
-        #     """
-        #     :return: int, maximum bytes this task need
-        #     50MB for current demo
-        #     """
-        #     return 50 * 1024 ** 2
+from popcorn.apps.hub.order.instruction import Instruction
+from state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine
 
 
 class Hub(object):
@@ -28,8 +17,7 @@ class Hub(object):
             'popcorn.rpc.pyro:RPCServer',  # fix me, dynamic load rpc portal
         ])
 
-    PLAN = defaultdict(int)
-    MACHINES = {}
+    PLANNERS = {}
 
     def __init__(self, app, **kwargs):
         self.app = app or self.app
@@ -41,81 +29,57 @@ class Hub(object):
         self.blueprint.start(self)
 
     @staticmethod
-    def send_order(id, stats):
+    def guard_heartbeat(machine):
         try:
-            machine = Hub.MACHINES.get(id, Machine(id))
-            Hub.MACHINES[id] = machine
-            machine.update_stats(stats)
-            if filter(lambda a: a != 0, Hub.PLAN.values()):
-                print "[Hub] Analyze Queue plan:", Hub.PLAN
-                for queue, worker_number in Hub.PLAN.iteritems():
-                    Hub.PLAN[queue] = Hub.load_balancing(queue, worker_number)
-                machine_plan = machine.plan(*Hub.PLAN.keys())
-                print "[Hub] Create machine %s plan %s" % (str(id), str(machine_plan))
-                machine.clear_plan()
-                if filter(lambda a: a != 0, machine_plan.values()):
-                    print "[hub] Plan machine:", id, machine_plan
-                return machine_plan
+            update_machine(machine)
+            print "[Hub] Analyze Demand: %s", DEMAND
+            for queue, worker_cnt in DEMAND.iteritems():
+                if Hub.load_balancing(queue, worker_cnt):
+                    remove_demand(queue)
+            order = pop_order(machine.id)
+            return order
         except Exception as e:
-            import traceback
             traceback.print_exc()
             print e
-            return {}
-        return {}
-
-    def get_worker_number(self, queue):
-        # get numbers we need
-        return 10
+            return None
+        return None
 
     @staticmethod
-    def clear_plan():
-        Hub.PLAN = defaultdict(int)
+    def report_demand(type, instruction):
+        instruction = Instruction.create(type, instruction)
+        current_worker_cnt = Hub.PLAN.get(instruction.queue)
+        new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
+        add_demand[instruction.queue] = new_worker_cnt
 
     @staticmethod
-    def set_plan(plan):
-        if filter(lambda a: a != 0, plan.values()):
-            Hub.PLAN.update(plan)
+    def guard_register(machine):
+        print '[Hub] new guard enroll: %s' % machine.id
+        update_machine(machine)
 
     @staticmethod
-    def enroll(id):
-        print '[Hub] new guard enroll: %s' % id
-        Hub.MACHINES[id] = Machine()
+    def load_balancing(queue, worker_cnt):
+        healthy_machines = [machine for machine in MACHINES.values() if machine.healthy]
+        if not healthy_machines:
+            print '[Hub] warning no healthy machine'
+            return False
+        worker_per_machine = math.ceil(worker_cnt / len(healthy_machines))
+        for machine in healthy_machines:
+            print '[Machine] load balance plan: %s take %d workers' % (machine.id, worker_per_machine)
+            add_plan(queue, machine.id, worker_per_machine)
+        return True
 
-    @staticmethod
-    def load_balancing(queue, worker_number):
-        remain_worker = 0
-        while worker_number > 0:
-            for id, machine in Hub.MACHINES.items():
-                if machine.health:
-                    cnt = 1
-                    if id == 'gyang-2.lan.appannie.com@192.168.1.243':
-                        cnt = 2
-                    machine.add_plan(queue, cnt)
-                    worker_number -= cnt
-                else:
-                    print "[Machine] %s unhealth" % str(id)
-            if not [machine for machine in Hub.MACHINES.values() if machine.health]:
-                print '[Hub] warning , remain %d workers' % worker_number
-                remain_worker = worker_number
-                return remain_worker
-        for machine in Hub.MACHINES.values():
-            if machine._plan[queue]:
-                print '[Machine] load balance: %s take %d workers' % (machine.id, machine._plan[queue])
-        return remain_worker
-
-
-def hub_send_order(id, stats):
+def hub_guard_heartbeat(machine):
     """
     :param id:
     :param stats: dict contains memory & cpu use
     :return:
     """
-    return Hub.send_order(id, stats=stats)
+    return Hub.guard_heartbeat(id, stats=stats)
 
 
-def hub_set_plan(plan=None):
-    return Hub.set_plan(plan)
+def hub_report_demand(type, instruction):
+    return Hub.report_demand(type, instruction)
 
 
-def hub_enroll(id):
-    return Hub.enroll(id)
+def hub_guard_register(machine):
+    return Hub.guard_register(machine)

@@ -1,10 +1,10 @@
-from instruction import WorkerInstruction
+from instruction import Instruction
 
 
 class Order(object):
 
     def __init__(self):
-        self.instructions = list
+        self.instructions = []
 
     def add_instruction(self, type, instruction):
         new_instruction = Instruction.create(type, instruction)

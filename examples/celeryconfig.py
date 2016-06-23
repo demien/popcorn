@@ -8,6 +8,6 @@ CELERYD_POOL_RESTARTS = True
 CELERY_IMPORTS = (
     "tasks",
 )
-HUB_IP = '192.168.99.1'
+HUB_IP = '192.168.1.52'
 HUB_IP = socket.gethostbyname(socket.gethostname())
 BROKER_URL = 'redis://%s:6379/0' % HUB_IP
