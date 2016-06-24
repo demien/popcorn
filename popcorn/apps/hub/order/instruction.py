@@ -19,8 +19,8 @@ class Instruction(object):
     SEPERATOR = ':'
 
     @staticmethod
-    def create(type, instruction):
-        return instantiate(instruction_mapping[type], instruction)
+    def create(type, cmd):
+        return instantiate(instruction_mapping[type], cmd)
 
     def parse(self, instruction):
         raise NotImplementedError()
@@ -39,17 +39,25 @@ class Operator(object):
     DEC = BaseOperator('-', operator.sub)
     ALL = [TO, INC, DEC]
 
+    @staticmethod
+    def get_operator_by_slug(slug):
+        for operator in Operator.ALL:
+            if operator.slug == slug:
+                return operator
 
 class WorkerInstruction(Instruction):
 
     TEMPLATE = '%s:%s%s'
 
-    def __init__(self, instruction):
+    def __init__(self, cmd):
         self.queue = None
         self.worker_cnt = None
         self.operator = None
-        if instruction:
-            self.queue, self.operator, self.worker_cnt = self.parse(instruction)
+        self.cmd = cmd
+        if self.cmd:
+            self.queue, operator_slug, worker_cnt = self.parse(cmd)
+        self.operator = Operator.get_operator_by_slug(operator_slug)
+        self.worker_cnt = int(worker_cnt)
         self.opcodes = (self.queue, self.operator, self.worker_cnt)
 
     @staticmethod

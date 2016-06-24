@@ -41,7 +41,7 @@ class Guard(object):
             try:
                 order = self.heartbeat(rpc_client)
                 if order:
-                    print '[Guard] get order: %s' % str(order)
+                    print '[Guard] get order: %s' % ','.join([i.cmd for i in order.instructions])
                     self.follow_order(order)
             except Exception:
                 import traceback
@@ -54,7 +54,7 @@ class Guard(object):
         return rpc_client.start_with_return('popcorn.apps.hub:hub_guard_heartbeat', machine=self.machine)
 
     def follow_order(self, order):
-        print '[Guard] follow order:'
+        pass
         # for queue, worker_number in order.iteritems():
         #     print '[Guard] Queue[%s], Workers [%2d]' % (queue, worker_number)
         #     self.update_worker(queue, worker_number)

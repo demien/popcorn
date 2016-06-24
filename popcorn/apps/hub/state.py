@@ -16,7 +16,11 @@ def add_demand(queue, worker_cnt):
 
 def remove_demand(queue):
     global DEMAND
-    DEMAND.POP(queue)
+    DEMAND.pop(queue)
+
+def get_worker_cnt(queue):
+    global DEMAND
+    return DEMAND[queue]
 
 
 #: The source of plan is demand. Load balance module will split the demand in to plan by machine
@@ -38,9 +42,10 @@ def pop_order(machine_id):
         worker_cnt = PLAN[queue].pop(machine_id)
         instruction_cmd = WorkerInstruction.generate_instruction_cmd(queue, worker_cnt)
         order.add_instruction(InstructionType.WORKER, instruction_cmd)
-    return order
+    return None if order.empty else order
 
 
+#: All the machine register to hub. It's a list.
 MACHINES = defaultdict(lambda: None)
 
 def update_machine(machine):

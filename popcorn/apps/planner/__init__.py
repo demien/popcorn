@@ -8,6 +8,7 @@ from popcorn.apps.constants import TIME_SCALE, INTERVAL
 from popcorn.apps.hub import Hub
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import RPCClient
+from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +77,11 @@ class Planner(object):
                 status=status,
                 time=timestampe
             )
-            plan = {self.queue: result}
-            print '[Planner] Heart beat on queue: %s' % self.queue
+            # print '[Planner] Heart beat on queue: %s' % self.queue
             if result:
-                print '[Planner] create new plan: %s' % str(plan)
-                self.rpc_client.start('popcorn.apps.hub:hub_set_plan', plan=plan)
+                cmd = WorkerInstruction.generate_instruction_cmd(self.queue, result)
+                print '[Planner] report new demand: %s' % str(cmd)
+                self.rpc_client.start('popcorn.apps.hub:hub_report_demand', type=InstructionType.WORKER, cmd=cmd)
 
 
 class Strategy(bootsteps.StartStopStep):

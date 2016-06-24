@@ -10,3 +10,7 @@ class Order(object):
         new_instruction = Instruction.create(type, instruction)
         self.instructions.append(new_instruction)
 
+    @property
+    def empty(self):
+        return False if self.instructions else True
+

@@ -127,5 +127,5 @@ class Camera(object):
     def snapshot(self):
         snapshot = {'time': datetime.now()}
         for component in self.machine.hardware.COMPONENTS:
-            picture[component.name] = component.value
+            snapshot[component.name] = component.value
         return snapshot

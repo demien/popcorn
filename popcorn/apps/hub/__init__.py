@@ -1,12 +1,14 @@
 import math
 import os
+import json
 import traceback
 from celery import bootsteps
 from celery.bootsteps import RUN, TERMINATE
 from collections import defaultdict
 from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
-from state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine
+from state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, \
+    get_worker_cnt
 
 
 class Hub(object):
@@ -32,24 +34,31 @@ class Hub(object):
     def guard_heartbeat(machine):
         try:
             update_machine(machine)
-            print "[Hub] Analyze Demand: %s", DEMAND
-            for queue, worker_cnt in DEMAND.iteritems():
-                if Hub.load_balancing(queue, worker_cnt):
-                    remove_demand(queue)
-            order = pop_order(machine.id)
-            return order
+            Hub.analyze_demand()
+            return pop_order(machine.id)
         except Exception as e:
-            traceback.print_exc()
+            traceback.print_exc();
             print e
             return None
-        return None
 
     @staticmethod
-    def report_demand(type, instruction):
-        instruction = Instruction.create(type, instruction)
-        current_worker_cnt = Hub.PLAN.get(instruction.queue)
+    def analyze_demand():
+        if not DEMAND:
+            return
+        print "[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND)
+        success_queues = []
+        for queue, worker_cnt in DEMAND.iteritems():
+            if Hub.load_balancing(queue, worker_cnt):
+                success_queues.append(queue)
+        for queue in success_queues:
+            remove_demand(queue)
+
+    @staticmethod
+    def report_demand(type, cmd):
+        instruction = Instruction.create(type, cmd)
+        current_worker_cnt = get_worker_cnt(instruction.queue)
         new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
-        add_demand[instruction.queue] = new_worker_cnt
+        add_demand(instruction.queue, new_worker_cnt)
 
     @staticmethod
     def guard_register(machine):
@@ -62,11 +71,12 @@ class Hub(object):
         if not healthy_machines:
             print '[Hub] warning no healthy machine'
             return False
-        worker_per_machine = math.ceil(worker_cnt / len(healthy_machines))
+        worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
         for machine in healthy_machines:
             print '[Machine] load balance plan: %s take %d workers' % (machine.id, worker_per_machine)
             add_plan(queue, machine.id, worker_per_machine)
         return True
+
 
 def hub_guard_heartbeat(machine):
     """
@@ -74,11 +84,11 @@ def hub_guard_heartbeat(machine):
     :param stats: dict contains memory & cpu use
     :return:
     """
-    return Hub.guard_heartbeat(id, stats=stats)
+    return Hub.guard_heartbeat(machine)
 
 
-def hub_report_demand(type, instruction):
-    return Hub.report_demand(type, instruction)
+def hub_report_demand(type, cmd):
+    return Hub.report_demand(type, cmd)
 
 
 def hub_guard_register(machine):
