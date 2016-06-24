@@ -11,3 +11,4 @@ CELERY_IMPORTS = (
 HUB_IP = '192.168.1.52'
 HUB_IP = socket.gethostbyname(socket.gethostname())
 BROKER_URL = 'redis://%s:6379/0' % HUB_IP
+BROKER_URL = 'redis://localhost:6379/0'
