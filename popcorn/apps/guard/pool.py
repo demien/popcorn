@@ -7,7 +7,7 @@ from collections import defaultdict
 class Pool(object):
 
     MIN = 1
-    MAX = 10 
+    MAX = 10
 
     def __init__(self, celery_app):
         self.app = celery_app
