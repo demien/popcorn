@@ -1,3 +1,4 @@
+from multiprocessing import Process
 from celery import concurrency
 from celery.utils import host_format, default_nodename, node_format
 from collections import defaultdict
@@ -20,6 +21,7 @@ class Pool(object):
     def create_pool(self, queue, pool_cls=None, loglevel=None, logfile=None, pidfile=None, state_db=None):
         kwargs = {
             'autoscale': '1,1',
+            'queues': queue,
         }
         pool_cls = concurrency.get_implementation(pool_cls) or self.app.conf.CELERYD_POOL
         hostname = '%s:%s' % (self.hostname, queue)
@@ -32,14 +34,21 @@ class Pool(object):
             state_db=node_format(state_db, hostname),
             **kwargs
         )
-        pool.start()
+        process = Process(target=self.start_pool, args=(pool, ))
+        process.daemon = True
+        process.start()
         return {'name': hostname, 'pool': pool}
 
+    def start_pool(self, pool):
+        pool.start()
+
     def shrink(self, pool_name, cnt):
-        self.app.control.autoscale(min=max(self.MIN, cnt), destination=[pool_name])
+        max_cnt = max(self.MIN, cnt)
+        self.app.control.autoscale(max=max_cnt, min=self.MIN, destination=[pool_name])
 
     def grow(self, pool_name, cnt):
-        self.app.control.autoscale(max=min(self.MAX, cnt), destination=[pool_name])
+        max_cnt = min(self.MAX, cnt)
+        self.app.control.autoscale(max=min(self.MAX, cnt), min=self.MIN, destination=[pool_name])
 
     @property
     def hostname(self):

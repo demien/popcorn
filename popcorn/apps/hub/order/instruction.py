@@ -32,6 +32,9 @@ class BaseOperator(object):
         self.slug = slug
         self.apply = apply
 
+    def __eq__(self, other):
+        return self.slug == other.slug
+
 
 class Operator(object):
     TO = BaseOperator('=', lambda a, b: b)

@@ -56,8 +56,6 @@ class Guard(object):
 
     def follow_order(self, order):
         for instruction in order.instructions:
-            print '*' * 100
-            print instruction.cmd
             pool_name = self.pool.get_or_create_pool_name(instruction.queue)
             if instruction.operator == Operator.INC:
                 self.pool.grow(pool_name, instruction.worker_cnt)
