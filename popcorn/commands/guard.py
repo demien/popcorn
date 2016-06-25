@@ -5,4 +5,5 @@ from popcorn.apps.guard import Guard
 class GuardCommand(BaseCommand):
 
     def run_from_argv(self, prog_name, argv=None, **_kwargs):
+        self.change_default_setting()
         Guard(self.app).start()

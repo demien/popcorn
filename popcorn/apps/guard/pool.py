@@ -2,7 +2,7 @@ from multiprocessing import Process
 from celery import concurrency
 from celery.utils import host_format, default_nodename, node_format
 from collections import defaultdict
-
+import time
 
 class Pool(object):
 
@@ -37,18 +37,30 @@ class Pool(object):
         process = Process(target=self.start_pool, args=(pool, ))
         process.daemon = True
         process.start()
-        return {'name': hostname, 'pool': pool}
+
+        if self.check_pool_start(hostname):
+           return {'name': hostname, 'pool': pool}
+        else:
+            return None
+
+    def check_pool_start(self, destination):
+        process = Process(target=self.app.control.ping, args=([destination], ))
+        process.start()
+        process.join()
+        print 'ping %s success' % destination
+        time.sleep(5)
+        return True
 
     def start_pool(self, pool):
         pool.start()
 
     def shrink(self, pool_name, cnt):
-        max_cnt = max(self.MIN, cnt)
-        self.app.control.autoscale(max=max_cnt, min=self.MIN, destination=[pool_name])
+        self.app.control.pool_shrink(cnt, destination=[pool_name])
 
     def grow(self, pool_name, cnt):
-        max_cnt = min(self.MAX, cnt)
-        self.app.control.autoscale(max=min(self.MAX, cnt), min=self.MIN, destination=[pool_name])
+        cnt = min(self.MAX, cnt)
+        print '[Pook] - [Grow]: %s, %s' % (pool_name, str(cnt))
+        self.app.control.pool_grow(cnt, destination=[pool_name])
 
     @property
     def hostname(self):

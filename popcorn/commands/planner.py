@@ -8,6 +8,7 @@ from popcorn.apps.planner import RegisterPlanner
 class PlannerCommand(BaseCommand):
 
     def run_from_argv(self, prog_name, argv=None, command=None):
+        self.change_default_setting()
         command = sys.argv[0] if command is None else command
         argv = sys.argv[1:] if argv is None else argv
         options, args = self.prepare_args(*self.parse_options(prog_name, argv, command))

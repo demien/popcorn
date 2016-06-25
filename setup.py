@@ -16,7 +16,9 @@ setup(
     install_requires=requires,
     entry_points={
         'console_scripts': [
-            'popcorn = popcorn.__main__:main',
+            'guard = popcorn.__main__:guard',
+            'hub = popcorn.__main__:hub',
+            'planner = popcorn.__main__:planner',
         ],
         'celery.commands': [
             'guard = popcorn.commands.guard:GuardCommand',
