@@ -1,8 +1,13 @@
-import time
-import subprocess
+import psutil
 import socket
+import time
 from celery import bootsteps
+from collections import defaultdict
+from machine import Machine
+from pool import Pool
+from popcorn.apps.utils import taste_soup
 from popcorn.rpc.pyro import RPCClient
+from popcorn.apps.hub.order.instruction import Operator
 
 
 class Guard(object):
@@ -19,45 +24,48 @@ class Guard(object):
     def __init__(self, app):
         self.app = app or self.app
         self.steps = []
-        self.id = self.get_id()
+        self.processes = defaultdict(list)
+        self.pool = Pool(self.app)
+        self.machine = Machine()
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
 
-    def get_id(self):
-        name = socket.gethostname()
-        ip = socket.gethostbyname(name)
-        return '%s@%s' % (name, ip)
+    @property
+    def id(self):
+        return self.machine.id
 
     def start(self):
         self.blueprint.start(self)
 
     def loop(self, rpc_client):
         while True:
-            print '[Guard] Heart beat %s' % self.id
-            self.collect_machine_info()
-            order = self.get_order(rpc_client)
-            if order:
-                print '[Guard] get order: %s' % str(order)
-                self.follow_order(order)
-            time.sleep(5)
+            try:
+                order = self.heartbeat(rpc_client)
+                if order:
+                    print '[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions])
+                    self.follow_order(order)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            finally:
+                time.sleep(5)
 
-    def get_order(self, rpc_client):
-        return self.rpc_client.start_with_return('popcorn.apps.hub:hub_send_order', id=self.id)
-
-    def collect_machine_info(self):
-        print '[Guard] collect info:  CUP 90%'
+    def heartbeat(self, rpc_client):
+        snapshot = self.machine.snapshot()
+        return rpc_client.start_with_return('popcorn.apps.hub:hub_guard_heartbeat', machine=self.machine)
 
     def follow_order(self, order):
-        for queue, concurrency in order.iteritems():
-            if concurrency <= 0:
-                continue
-            cmd = 'celery worker -Q %s --autoscale=%s,1' % (queue, concurrency)
-            print '[Guard] exec command: %s' % cmd
-            subprocess.Popen(cmd.split(' '))
+        for instruction in order.instructions:
+            pool_name = self.pool.get_or_create_pool_name(instruction.queue)
+            
+            if instruction.operator == Operator.INC:
+                self.pool.grow(pool_name, instruction.worker_cnt)
+            elif instruction.operator == Operator.DEC:
+                self.pool.shrink(pool_name, instruction.worker_cnt)
 
 
 class Register(bootsteps.StartStopStep):
-    requires = (RPCClient, )
+    requires = (RPCClient,)
 
     def __init__(self, p, **kwargs):
         pass
@@ -66,7 +74,7 @@ class Register(bootsteps.StartStopStep):
         return True
 
     def create(self, p):
-        p.rpc_client.start('popcorn.apps.hub:hub_enroll', id=p.id)
+        p.rpc_client.start('popcorn.apps.hub:hub_guard_register', machine=p.machine)
         return self
 
     def start(self, p):
@@ -80,7 +88,7 @@ class Register(bootsteps.StartStopStep):
 
 
 class Loop(bootsteps.StartStopStep):
-    requires = (Register, )
+    requires = (Register,)
 
     def __init__(self, p, **kwargs):
         pass

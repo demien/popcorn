@@ -14,11 +14,12 @@ class PyroServer(BaseRPCServer):
         self.daemon = Pyro4.Daemon(host=ip, port=port)  # make a Pyro daemon
 
     def _register(self):
-        uri = self.daemon.register(RPCDispatcher, DISPATHCER_SERVER_NAME)   # register the greeting maker as a Pyro object
-        print '[RPC Server] Register Uri %s' % uri
+        return self.daemon.register(RPCDispatcher, DISPATHCER_SERVER_NAME)   # register the greeting maker as a Pyro object
+        # print '[RPC Server] Register Uri %s' % uri
 
     def start(self):
-        self._register()
+        uri = self._register()
+        print '[RPC Server] - [Start] - %s' % uri
         self.daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
     def get_ip(self):
@@ -30,7 +31,7 @@ class PyroClient(BaseRPCClient):
 
     def __init__(self, server, ip, port):
         uri = get_uri(server, ip, port)
-        print '[RPC Client] connection server %s' % uri
+        # print '[RPC Client] connection server %s' % uri
         self.rpc_client = Pyro4.Proxy(uri)    # use name server object lookup uri shortcut
 
     def start(self, func_path, *args, **kwargs):

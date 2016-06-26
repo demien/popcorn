@@ -12,9 +12,9 @@ class SimpleStrategy(BaseStrategy):
         previous_time = kwargs.get('previous_time')
         status = kwargs.get('status')
         time = kwargs.get('time')
-        return self.taste(previous_status, previous_time, status, time, threshold=100)
+        return self.taste(previous_status, previous_time, status, time, threshold=5)
 
     def taste(self, previous_status, previous_time, current_status, current_time, salt=5, threshold=10):
         delta = (current_status - previous_status) * TIME_SCALE / (current_time - previous_time)
-        salt_add = salt * ceil(delta / threshold) if delta > 0 else 0
+        salt_add = salt * ceil(delta / threshold) if delta >= 0 else 0
         return int(salt_add)
