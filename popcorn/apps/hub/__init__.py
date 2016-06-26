@@ -7,8 +7,9 @@ from celery.bootsteps import RUN, TERMINATE
 from collections import defaultdict
 from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
-from state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, \
-    get_worker_cnt
+from popcorn.rpc.pyro import RPCServer as _RPCServer
+from state import (
+    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
 
 class Hub(object):
@@ -16,7 +17,8 @@ class Hub(object):
         """Hub bootstep blueprint."""
         name = 'Hub'
         default_steps = set([
-            'popcorn.rpc.pyro:RPCServer',  # fix me, dynamic load rpc portal
+            'popcorn.apps.hub:LoadPlanners',
+            'popcorn.apps.hub:RPCServer',  # fix me, dynamic load rpc portal
         ])
 
     PLANNERS = {}
@@ -76,6 +78,33 @@ class Hub(object):
             print '[Machine] load balance plan: %s take %d workers' % (machine.id, worker_per_machine)
             add_plan(queue, machine.id, worker_per_machine)
         return True
+
+
+class LoadPlanners(bootsteps.StartStopStep):
+
+    def __init__(self, p, **kwargs):
+        pass
+
+    def include_if(self, p):
+        return True
+
+    def create(self, p):
+        return self
+
+    def start(self, p):
+        from popcorn.apps.planner import Planner
+        for queue, strategy in p.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
+            Planner(p.app, queue=queue, strategy_name=strategy).start()
+
+    def stop(self, p):
+        print 'in stop'
+
+    def terminate(self, p):
+        print 'in terminate'
+
+
+class RPCServer(_RPCServer):
+    requires = (LoadPlanners,)
 
 
 def hub_guard_heartbeat(machine):

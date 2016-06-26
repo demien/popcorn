@@ -4,6 +4,7 @@ from celery.utils import host_format, default_nodename, node_format
 from collections import defaultdict
 import time
 
+
 class Pool(object):
 
     MIN = 1
@@ -24,7 +25,7 @@ class Pool(object):
             'queues': queue,
         }
         pool_cls = concurrency.get_implementation(pool_cls) or self.app.conf.CELERYD_POOL
-        hostname = '%s:%s' % (self.hostname, queue)
+        hostname = '%s::%s' % (self.hostname, queue)
         pool = self.app.Worker(
             hostname=hostname,
             pool_cls=pool_cls,
@@ -34,6 +35,7 @@ class Pool(object):
             state_db=node_format(state_db, hostname),
             **kwargs
         )
+        dir(pool)
         process = Process(target=self.start_pool, args=(pool, ))
         process.daemon = True
         process.start()
@@ -47,8 +49,6 @@ class Pool(object):
         process = Process(target=self.app.control.ping, args=([destination], ))
         process.start()
         process.join()
-        print 'ping %s success' % destination
-        time.sleep(5)
         return True
 
     def start_pool(self, pool):
