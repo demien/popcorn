@@ -59,7 +59,7 @@ class Pool(object):
 
     def grow(self, pool_name, cnt):
         cnt = min(self.MAX, cnt)
-        print '[Pook] - [Grow]: %s, %s' % (pool_name, str(cnt))
+        print '[Pool] - [Grow] - %s, %s' % (pool_name, str(cnt))
         self.app.control.pool_grow(cnt, destination=[pool_name])
 
     @property

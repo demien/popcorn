@@ -47,7 +47,7 @@ class Hub(object):
     def analyze_demand():
         if not DEMAND:
             return
-        print "[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND)
+        # print "[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND)
         success_queues = []
         for queue, worker_cnt in DEMAND.iteritems():
             if Hub.load_balancing(queue, worker_cnt):
@@ -64,18 +64,18 @@ class Hub(object):
 
     @staticmethod
     def guard_register(machine):
-        print '[Hub] new guard enroll: %s' % machine.id
+        print '[Guard] - [Register] - %s' % machine.id
         update_machine(machine)
 
     @staticmethod
     def load_balancing(queue, worker_cnt):
         healthy_machines = [machine for machine in MACHINES.values() if machine.healthy]
         if not healthy_machines:
-            print '[Hub] warning no healthy machine'
+            print '[Hub] - [Warning] - No Healthy Machines!'
             return False
         worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
         for machine in healthy_machines:
-            print '[Machine] load balance plan: %s take %d workers' % (machine.id, worker_per_machine)
+            print '[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue)
             add_plan(queue, machine.id, worker_per_machine)
         return True
 

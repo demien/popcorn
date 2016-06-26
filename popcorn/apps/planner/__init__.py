@@ -62,6 +62,7 @@ class Planner(object):
         self.blueprint.apply(self)
 
     def start(self):
+        print '[Planner] - [Register] - Queue: %s, Strategy: %s' % (self.queue, self.strategy_name)
         self.blueprint.start(self)
 
     def plan(self):
@@ -77,10 +78,9 @@ class Planner(object):
                 status=status,
                 time=timestampe
             )
-            # print '[Planner] Heart beat on queue: %s' % self.queue
             if result:
                 cmd = WorkerInstruction.generate_instruction_cmd(self.queue, result)
-                print '[Planner] report new demand: %s' % str(cmd)
+                print '[Planner] - [Report New Demand] - %s' % str(cmd)
                 self.rpc_client.start('popcorn.apps.hub:hub_report_demand', type=InstructionType.WORKER, cmd=cmd)
 
 

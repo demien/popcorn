@@ -42,7 +42,7 @@ class Guard(object):
             try:
                 order = self.heartbeat(rpc_client)
                 if order:
-                    print '[Guard] get order: %s' % ','.join([i.cmd for i in order.instructions])
+                    print '[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions])
                     self.follow_order(order)
             except Exception:
                 import traceback
