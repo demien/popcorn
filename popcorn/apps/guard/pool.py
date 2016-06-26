@@ -21,7 +21,7 @@ class Pool(object):
 
     def create_pool(self, queue, pool_cls=None, loglevel=None, logfile=None, pidfile=None, state_db=None):
         kwargs = {
-            'autoscale': '1,1',
+            'autoscale': '200,1',
             'queues': queue,
         }
         pool_cls = concurrency.get_implementation(pool_cls) or self.app.conf.CELERYD_POOL
@@ -35,7 +35,6 @@ class Pool(object):
             state_db=node_format(state_db, hostname),
             **kwargs
         )
-        dir(pool)
         process = Process(target=self.start_pool, args=(pool, ))
         process.daemon = True
         process.start()
@@ -49,6 +48,7 @@ class Pool(object):
         process = Process(target=self.app.control.ping, args=([destination], ))
         process.start()
         process.join()
+        time.sleep(5)
         return True
 
     def start_pool(self, pool):
