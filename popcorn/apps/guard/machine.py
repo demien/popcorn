@@ -132,4 +132,8 @@ class Camera(object):
         snapshot = {'time': datetime.now()}
         for component in self.machine.hardware.COMPONENTS:
             snapshot[component.name] = component.value
+        pool_info = {}
+        for queue, pool in self.machine.pool.pool_map.iteritems():
+            pool_info[queue] = pool['pool'].info()
+        snapshot['pool_info'] = pool_info
         return snapshot

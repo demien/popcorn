@@ -34,7 +34,6 @@ class Hub(object):
     def guard_heartbeat(machine):
         try:
             update_machine(machine)
-            print '*' * 10, machine.pool.pool_map
             Hub.analyze_demand()
             return pop_order(machine.id)
         except Exception as e:
