@@ -39,6 +39,7 @@ class PyroClient(BaseRPCClient):
         self.rpc_client.dispatch(func_path, *args, **kwargs)
 
     def start_with_return(self, func_path, *args, **kwargs):
+        Pyro4.config.SERIALIZER = 'pickle'
         return self.rpc_client.dispatch_with_return(func_path, *args, **kwargs)
 
 

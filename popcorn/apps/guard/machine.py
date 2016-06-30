@@ -11,7 +11,8 @@ class Machine(object):
 
     _CPU_WINDOW_SIZE = 5
 
-    def __init__(self):
+    def __init__(self, pool):
+        self.pool = pool
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
@@ -68,7 +69,7 @@ class Component(object):
 
 class CPU(Component):
 
-    IDLE_THRESHOLD = 30  # percentage
+    IDLE_THRESHOLD = 10  # percentage
 
     @property
     def value(self):
@@ -86,7 +87,7 @@ class CPU(Component):
 class Memory(Component):
 
     G = 1024 * 1024 * 1024  # gigabyte
-    AVAILABLE_USAGE_THRESHOLD = 2 * G
+    AVAILABLE_USAGE_THRESHOLD = 0.5 * G
     AVAILABLE_PERCENTAGE_THRESHOLD = 40  # percentage
 
     @property
@@ -117,6 +118,9 @@ class Hardware(object):
     @property
     def healthy(self):
         return all([c.healthy for c in self.COMPONENTS])
+
+    def to_string(self):
+        return '\n'.join(['\t%s: %s ' % (component.name, component.value) for component in self.COMPONENTS])
 
 
 class Camera(object):

@@ -9,6 +9,7 @@ from popcorn.apps.hub import Hub
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import RPCClient
 from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
+from popcorn.apps.hub.state import add_planner
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class Planner(object):
 
     def start(self):
         print '[Planner] - [Register] - Queue: %s, Strategy: %s' % (self.queue, self.strategy_name)
+        add_planner(self.queue, self.strategy_name)
         self.blueprint.start(self)
 
     def plan(self):

@@ -9,7 +9,7 @@ from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
 from state import (
-    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
+    DEMAND, PLAN, MACHINES, PLANNERS, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
 
 class Hub(object):
@@ -20,8 +20,6 @@ class Hub(object):
             'popcorn.apps.hub:LoadPlanners',
             'popcorn.apps.hub:RPCServer',  # fix me, dynamic load rpc portal
         ])
-
-    PLANNERS = {}
 
     def __init__(self, app, **kwargs):
         self.app = app or self.app
@@ -36,6 +34,7 @@ class Hub(object):
     def guard_heartbeat(machine):
         try:
             update_machine(machine)
+            print '*' * 10, machine.pool.pool_map
             Hub.analyze_demand()
             return pop_order(machine.id)
         except Exception as e:
@@ -78,6 +77,14 @@ class Hub(object):
             print '[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue)
             add_plan(queue, machine.id, worker_per_machine)
         return True
+
+    @staticmethod
+    def scan(target):
+        from popcorn.apps.scan import ScanTarget
+        if target == ScanTarget.MACHINE:
+            return dict(MACHINES)
+        if target == ScanTarget.PLANNER:
+            return dict(PLANNERS)
 
 
 class LoadPlanners(bootsteps.StartStopStep):
@@ -122,3 +129,6 @@ def hub_report_demand(type, cmd):
 
 def hub_guard_register(machine):
     return Hub.guard_register(machine)
+
+def hub_scan(target):
+    return Hub.scan(target)

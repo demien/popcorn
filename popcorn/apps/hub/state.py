@@ -51,3 +51,11 @@ MACHINES = defaultdict(lambda: None)
 def update_machine(machine):
     global MACHINES
     MACHINES[machine.id] = machine
+
+
+#: All the planner, including queue and strategy
+PLANNERS = defaultdict(str)
+
+def add_planner(queue, strategy):
+    global PLANNERS
+    PLANNERS[queue] = strategy

@@ -26,13 +26,13 @@ class Guard(object):
         self.steps = []
         self.processes = defaultdict(list)
         self.pool = Pool(self.app)
-        self.machine = Machine()
+        self.machine = Machine(self.pool)
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
 
     @property
     def id(self):
-        return self.machine.id
+        return self.machiinee.id
 
     def start(self):
         self.blueprint.start(self)
