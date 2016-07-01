@@ -63,7 +63,6 @@ class DoScan(bootsteps.StartStopStep):
             print self.TAB, self.SEPERATOR
             print self.TAB, 'id: %s' % id
             print machine.hardware.to_string()
-            print self.TAB, 'pool: %s' % machine.pool.to_string()
 
     def _scan_planner(self, planners):
         for queue, strategy in planners.iteritems():

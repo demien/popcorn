@@ -11,8 +11,7 @@ class Machine(object):
 
     _CPU_WINDOW_SIZE = 5
 
-    def __init__(self, pool):
-        self.pool = pool
+    def __init__(self):
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
@@ -132,8 +131,4 @@ class Camera(object):
         snapshot = {'time': datetime.now()}
         for component in self.machine.hardware.COMPONENTS:
             snapshot[component.name] = component.value
-        pool_info = {}
-        for queue, pool in self.machine.pool.pool_map.iteritems():
-            pool_info[queue] = pool['pool'].info()
-        snapshot['pool_info'] = pool_info
         return snapshot
