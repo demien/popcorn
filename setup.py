@@ -19,11 +19,13 @@ setup(
             'guard = popcorn.__main__:guard',
             'hub = popcorn.__main__:hub',
             'planner = popcorn.__main__:planner',
+            'scan = popcorn.__main__:scan',
         ],
         'celery.commands': [
             'guard = popcorn.commands.guard:GuardCommand',
             'hub = popcorn.commands.hub:HubCommand',
             'planner = popcorn.commands.planner:PlannerCommand',
+            'scan = popcorn.commands.scan:ScanCommand',
         ],
     },
 )

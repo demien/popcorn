@@ -12,7 +12,7 @@ class Pool(object):
 
     def __init__(self, celery_app):
         self.app = celery_app
-        self.pool_map = defaultdict(lambda: None)
+        self.pool_map = defaultdict(int)
 
     def get_or_create_pool_name(self, queue):
         if not self.pool_map.get(queue):
@@ -65,3 +65,9 @@ class Pool(object):
     @property
     def hostname(self):
         return host_format(default_nodename(None))
+
+    def to_string(self):
+        re = ''
+        for queue, pool in self.pool_map.iteritems():
+            re += 'queue, %s' % pool
+        return re
