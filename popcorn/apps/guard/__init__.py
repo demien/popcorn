@@ -32,7 +32,7 @@ class Guard(object):
 
     @property
     def id(self):
-        return self.machiinee.id
+        return self.machine.id
 
     def start(self):
         self.blueprint.start(self)
