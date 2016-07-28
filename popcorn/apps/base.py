@@ -1,5 +1,17 @@
 class BaseApp(object):
 
+    def setup_instance(self, **kwargs):
+        self.no_color = None
+        self.on_init_blueprint(**kwargs)
+
+    def on_init_blueprint(self, **kwargs):
+        self._custom_logging = self.setup_logging()
+
+    def setup_logging(self, colorize=None):
+        if colorize is None and self.no_color is not None:
+            colorize = not self.no_color
+        return self.app.log.setup(self.loglevel, self.logfile, redirect_stdouts=False, colorize=colorize)
+
     def setup_defaults(self, loglevel=None, logfile=None, **_kw):
         self.loglevel = self._getopt('log_level', loglevel)
         self.logfile = self._getopt('log_file', logfile)

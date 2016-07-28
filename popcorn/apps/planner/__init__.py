@@ -4,7 +4,8 @@ import logging
 from celery import bootsteps
 from celery.utils.imports import instantiate
 from multiprocessing import Process
-from popcorn.apps.constants import TIME_SCALE, INTERVAL
+from popcorn.apps.base import BaseApp
+from popcorn.apps.constants import TIME_SCALE
 from popcorn.apps.hub import Hub
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import RPCClient
@@ -12,7 +13,9 @@ from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionTyp
 from popcorn.apps.hub.state import add_planner
 from popcorn.utils.log import get_log_obj
 
+
 debug, info, warn, error, critical = get_log_obj(__name__)
+HEARTBEAT_INTERVAL = 5
 
 
 STRATEGY_MAP = {
@@ -20,7 +23,7 @@ STRATEGY_MAP = {
 }
 
 
-class RegisterPlanner(object):
+class RegisterPlanner(BaseApp):
 
     class Blueprint(bootsteps.Blueprint):
 
@@ -31,16 +34,23 @@ class RegisterPlanner(object):
             'popcorn.apps.planner:Register',
         ])
 
-    def __init__(self, app, queue, strategy_name):
+    def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
+        import ipdb; ipdb.set_trace()
+        self.setup_defaults(**kwargs)
+        self.setup_instance(**kwargs)
         self.blueprint = self.Blueprint(app=self.app)
-        self.queue = queue
-        self.strategy_name = strategy_name
         self.blueprint.apply(self)
 
     def start(self):
         self.blueprint.start(self)
+
+    def setup_defaults(self, loglevel=None, logfile=None, queue=None, strategy=None, **_kw):
+        self.queue = self._getopt('queue', queue)
+        self.strategy_name = self._getopt('strategy', strategy)
+        self.loglevel = self._getopt('log_level', loglevel)
+        self.logfile = self._getopt('log_file', logfile)
 
 
 class Planner(object):
@@ -70,9 +80,10 @@ class Planner(object):
 
     def plan(self):
         while True:
+            debug('[Planner] - [HeartBeat] - %s:%s' % (self.queue, self.strategy_name))
             previous_timestampe = int(round(time.time() * TIME_SCALE))
             previous_status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
-            time.sleep(INTERVAL)
+            time.sleep(HEARTBEAT_INTERVAL)
             timestampe = int(round(time.time() * TIME_SCALE))
             status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             result = self.strategy.apply(

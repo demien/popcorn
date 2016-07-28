@@ -5,12 +5,17 @@ from celery import bootsteps
 from collections import defaultdict
 from machine import Machine
 from pool import Pool
+from popcorn.apps.base import BaseApp
+from popcorn.apps.hub.order.instruction import Operator
 from popcorn.apps.utils import taste_soup
 from popcorn.rpc.pyro import RPCClient
-from popcorn.apps.hub.order.instruction import Operator
+from popcorn.utils.log import get_log_obj
 
 
-class Guard(object):
+debug, info, warn, error, critical = get_log_obj(__name__)
+
+
+class Guard(BaseApp):
 
     class Blueprint(bootsteps.Blueprint):
         """Hub bootstep blueprint."""
@@ -21,12 +26,14 @@ class Guard(object):
             'popcorn.apps.guard:Loop',
         ])
 
-    def __init__(self, app):
+    def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
         self.processes = defaultdict(list)
         self.pool = Pool(self.app)
         self.machine = Machine()
+        self.setup_defaults(**kwargs)
+        self.setup_instance(**kwargs)
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
 
@@ -42,7 +49,7 @@ class Guard(object):
             try:
                 order = self.heartbeat(rpc_client)
                 if order:
-                    print '[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions])
+                    debug('[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions]))
                     self.follow_order(order)
             except Exception:
                 import traceback
@@ -52,6 +59,7 @@ class Guard(object):
 
     def heartbeat(self, rpc_client):
         snapshot = self.machine.snapshot()
+        debug('[Guard] - [HeartBeat] - RPC call to hub_guard_heartbeat')
         return rpc_client.start_with_return('popcorn.apps.hub:hub_guard_heartbeat', machine=self.machine)
 
     def follow_order(self, order):

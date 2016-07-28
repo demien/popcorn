@@ -29,7 +29,7 @@ class Hub(BaseApp):
             'popcorn.apps.hub:RPCServer',  # fix me, dynamic load rpc portal
         ])
 
-    def __init__(self, app, hostname=None, **kwargs):
+    def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
         self.setup_defaults(**kwargs)
@@ -38,24 +38,13 @@ class Hub(BaseApp):
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self, **kwargs)
 
-    def setup_instance(self, **kwargs):
-        self.no_color = None
-        self.on_init_blueprint(**kwargs)
-
-    def on_init_blueprint(self, **kwargs):
-        self._custom_logging = self.setup_logging()
-
-    def setup_logging(self, colorize=None):
-        if colorize is None and self.no_color is not None:
-            colorize = not self.no_color
-        return self.app.log.setup(self.loglevel, self.logfile, redirect_stdouts=False, colorize=colorize)
-
     def start(self):
         self.blueprint.start(self)
 
     @staticmethod
     def guard_heartbeat(machine):
         try:
+            debug('[HUB] - [Receive Guard Heartbeat] - %s' % machine.id)
             update_machine(machine)
             Hub.analyze_demand()
             return pop_order(machine.id)
@@ -92,11 +81,11 @@ class Hub(BaseApp):
     def load_balancing(queue, worker_cnt):
         healthy_machines = [machine for machine in MACHINES.values() if machine.healthy]
         if not healthy_machines:
-            print '[Hub] - [Warning] - No Healthy Machines!'
+            warn('[Hub] - [Warning] - No Healthy Machines!')
             return False
         worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
         for machine in healthy_machines:
-            print '[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue)
+            info('[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
             add_plan(queue, machine.id, worker_per_machine)
         return True
 
