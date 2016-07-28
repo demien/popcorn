@@ -7,6 +7,7 @@ from celery import bootsteps
 from celery.bootsteps import RUN, TERMINATE
 from collections import defaultdict
 
+from popcorn.apps.base import BaseApp
 from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
@@ -19,7 +20,7 @@ from state import (
 debug, info, warn, error, critical = get_log_obj(__name__)
 
 
-class Hub(object):
+class Hub(BaseApp):
     class Blueprint(bootsteps.Blueprint):
         """Hub bootstep blueprint."""
         name = 'Hub'
@@ -36,15 +37,6 @@ class Hub(object):
 
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self, **kwargs)
-
-    def setup_defaults(self, loglevel=None, logfile=None, **_kw):
-        self.loglevel = self._getopt('log_level', loglevel)
-        self.logfile = self._getopt('log_file', logfile)
-
-    def _getopt(self, key, value):
-        if value is not None:
-            return value
-        return self.app.conf.find_value_for_key(key, namespace='celeryd')
 
     def setup_instance(self, **kwargs):
         self.no_color = None
