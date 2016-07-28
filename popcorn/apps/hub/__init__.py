@@ -2,14 +2,21 @@ import math
 import os
 import json
 import traceback
+
 from celery import bootsteps
 from celery.bootsteps import RUN, TERMINATE
 from collections import defaultdict
+
 from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
+from popcorn.utils.log import get_log_obj
+
 from state import (
     DEMAND, PLAN, MACHINES, PLANNERS, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
+
+
+debug, info, warn, error, critical = get_log_obj(__name__)
 
 
 class Hub(object):
@@ -21,11 +28,35 @@ class Hub(object):
             'popcorn.apps.hub:RPCServer',  # fix me, dynamic load rpc portal
         ])
 
-    def __init__(self, app, **kwargs):
+    def __init__(self, app, hostname=None, **kwargs):
         self.app = app or self.app
         self.steps = []
+        self.setup_defaults(**kwargs)
+        self.setup_instance(**kwargs)
+
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self, **kwargs)
+
+    def setup_defaults(self, loglevel=None, logfile=None, **_kw):
+        self.loglevel = self._getopt('log_level', loglevel)
+        self.logfile = self._getopt('log_file', logfile)
+
+    def _getopt(self, key, value):
+        if value is not None:
+            return value
+        return self.app.conf.find_value_for_key(key, namespace='celeryd')
+
+    def setup_instance(self, **kwargs):
+        self.no_color = None
+        self.on_init_blueprint(**kwargs)
+
+    def on_init_blueprint(self, **kwargs):
+        self._custom_logging = self.setup_logging()
+
+    def setup_logging(self, colorize=None):
+        if colorize is None and self.no_color is not None:
+            colorize = not self.no_color
+        return self.app.log.setup(self.loglevel, self.logfile, redirect_stdouts=False, colorize=colorize)
 
     def start(self):
         self.blueprint.start(self)
@@ -62,7 +93,7 @@ class Hub(object):
 
     @staticmethod
     def guard_register(machine):
-        print '[Guard] - [Register] - %s' % machine.id
+        info('[Guard] - [Register] - %s' % machine.id)
         update_machine(machine)
 
     @staticmethod

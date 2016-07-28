@@ -3,6 +3,10 @@ import socket
 from celery import bootsteps
 from popcorn.rpc import DISPATHCER_SERVER_NAME, PORT, get_uri
 from popcorn.rpc.base import BaseRPCServer, BaseRPCClient, RPCDispatcher
+from popcorn.utils.log import get_log_obj
+
+
+debug, info, warn, error, critical = get_log_obj(__name__)
 
 
 class PyroServer(BaseRPCServer):
@@ -19,7 +23,7 @@ class PyroServer(BaseRPCServer):
 
     def start(self):
         uri = self._register()
-        print '[RPC Server] - [Start] - %s' % uri
+        info('[RPC Server] - [Start] - %s' % uri)
         self.daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
     def get_ip(self):
