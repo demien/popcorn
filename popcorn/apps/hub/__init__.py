@@ -2,17 +2,25 @@ import math
 import os
 import json
 import traceback
+
 from celery import bootsteps
 from celery.bootsteps import RUN, TERMINATE
 from collections import defaultdict
+
+from popcorn.apps.base import BaseApp
 from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
+from popcorn.utils.log import get_log_obj
+
 from state import (
     DEMAND, PLAN, MACHINES, PLANNERS, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
 
-class Hub(object):
+debug, info, warn, error, critical = get_log_obj(__name__)
+
+
+class Hub(BaseApp):
     class Blueprint(bootsteps.Blueprint):
         """Hub bootstep blueprint."""
         name = 'Hub'
@@ -24,6 +32,9 @@ class Hub(object):
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
+        self.setup_defaults(**kwargs)
+        self.setup_instance(**kwargs)
+
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self, **kwargs)
 
@@ -33,6 +44,7 @@ class Hub(object):
     @staticmethod
     def guard_heartbeat(machine):
         try:
+            debug('[HUB] - [Receive Guard Heartbeat] - %s' % machine.id)
             update_machine(machine)
             Hub.analyze_demand()
             return pop_order(machine.id)
@@ -62,18 +74,18 @@ class Hub(object):
 
     @staticmethod
     def guard_register(machine):
-        print '[Guard] - [Register] - %s' % machine.id
+        info('[Guard] - [Register] - %s' % machine.id)
         update_machine(machine)
 
     @staticmethod
     def load_balancing(queue, worker_cnt):
         healthy_machines = [machine for machine in MACHINES.values() if machine.healthy]
         if not healthy_machines:
-            print '[Hub] - [Warning] - No Healthy Machines!'
+            warn('[Hub] - [Warning] - No Healthy Machines!')
             return False
         worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
         for machine in healthy_machines:
-            print '[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue)
+            info('[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
             add_plan(queue, machine.id, worker_per_machine)
         return True
 

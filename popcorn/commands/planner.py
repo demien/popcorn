@@ -8,16 +8,13 @@ from popcorn.apps.planner import RegisterPlanner
 class PlannerCommand(BaseCommand):
 
     def run_from_argv(self, prog_name, argv=None, command=None):
-        self.change_default_setting()
-        command = sys.argv[0] if command is None else command
-        argv = sys.argv[1:] if argv is None else argv
-        options, args = self.prepare_args(*self.parse_options(prog_name, argv, command))
-
-        planner = RegisterPlanner(self.app, queue=options['queue'], strategy_name=options['strategy'])
-        planner.start()
+        self.before_init()
+        options = self.generate_options(prog_name, argv, command)
+        RegisterPlanner(self.app, **options).start()
 
     def get_options(self):
         return (
             Option('-Q', '--queue'),
-            Option('-S', '--strategy', default='simple')
+            Option('-S', '--strategy', default='simple'),
+            Option('-l', '--loglevel'),
         )
