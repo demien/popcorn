@@ -37,7 +37,6 @@ class RegisterPlanner(BaseApp):
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
-        import ipdb; ipdb.set_trace()
         self.setup_defaults(**kwargs)
         self.setup_instance(**kwargs)
         self.blueprint = self.Blueprint(app=self.app)
