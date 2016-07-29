@@ -61,7 +61,8 @@ class Autoshrink(bgThread):
         procs = self.processes
         cur = self.qty
         if cur < procs:
-            self.scale_down((procs - cur) - self.min_concurrency)
+            cnt = (procs - cur) - self.min_concurrency
+            self.scale_down(max(cnt, 0))
             return True
 
     def maybe_scale(self, req=None):
@@ -100,8 +101,13 @@ class Autoshrink(bgThread):
         return self._grow(n)
 
     def scale_down(self, n):
-        self._last_action = monotonic()
-        return self._shrink(n)
+        if self._last_action:
+            if n and (monotonic() - self._last_action > self.keepalive):
+                self._last_action = monotonic()
+                return self._shrink(n)
+        else:
+            self._last_action = monotonic()
+            return self._shrink(n)
 
     def _grow(self, n):
         info('Scaling up %s processes.', n)

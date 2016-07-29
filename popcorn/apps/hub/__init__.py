@@ -57,7 +57,7 @@ class Hub(BaseApp):
     def analyze_demand():
         if not DEMAND:
             return
-        # print "[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND)
+        debug("[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND))
         success_queues = []
         for queue, worker_cnt in DEMAND.iteritems():
             if Hub.load_balancing(queue, worker_cnt):

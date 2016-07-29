@@ -93,7 +93,7 @@ class Planner(object):
             )
             if result:
                 cmd = WorkerInstruction.generate_instruction_cmd(self.queue, result)
-                print '[Planner] - [Report New Demand] - %s' % str(cmd)
+                info('[Planner] - [Report New Demand] - %s' % str(cmd))
                 self.rpc_client.start('popcorn.apps.hub:hub_report_demand', type=InstructionType.WORKER, cmd=cmd)
 
 

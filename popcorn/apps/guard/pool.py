@@ -1,8 +1,13 @@
-from multiprocessing import Process
+import time
 from celery import concurrency
 from celery.utils import host_format, default_nodename, node_format
 from collections import defaultdict
-import time
+from multiprocessing import Process
+from popcorn.utils.log import get_log_obj
+from multiprocessing import Process
+
+
+debug, info, warn, error, critical = get_log_obj(__name__)
 
 
 class Pool(object):
@@ -59,7 +64,7 @@ class Pool(object):
 
     def grow(self, pool_name, cnt):
         cnt = min(self.MAX, cnt)
-        print '[Pool] - [Grow] - %s, %s' % (pool_name, str(cnt))
+        debug('[Pool] - [Grow] - %s, %s' % (pool_name, str(cnt)))
         self.app.control.pool_grow(cnt, destination=[pool_name])
 
     @property
