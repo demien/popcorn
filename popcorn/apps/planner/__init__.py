@@ -26,7 +26,6 @@ STRATEGY_MAP = {
 class RegisterPlanner(BaseApp):
 
     class Blueprint(bootsteps.Blueprint):
-
         """Hub bootstep blueprint."""
         name = 'RegisterPlanner'
         default_steps = set([
