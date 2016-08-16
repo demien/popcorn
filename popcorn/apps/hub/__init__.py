@@ -1,6 +1,7 @@
 import math
 import os
 import json
+import Pyro4
 import traceback
 
 from celery import bootsteps
@@ -125,6 +126,7 @@ class RPCServer(_RPCServer):
     requires = (LoadPlanners,)
 
 
+@Pyro4.expose
 def hub_guard_heartbeat(machine):
     """
     :param id:
@@ -134,12 +136,16 @@ def hub_guard_heartbeat(machine):
     return Hub.guard_heartbeat(machine)
 
 
+@Pyro4.expose
 def hub_report_demand(type, cmd):
     return Hub.report_demand(type, cmd)
 
 
+@Pyro4.expose
 def hub_guard_register(machine):
     return Hub.guard_register(machine)
 
+
+@Pyro4.expose
 def hub_scan(target):
     return Hub.scan(target)

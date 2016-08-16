@@ -2,7 +2,7 @@ FROM python:2.7
 MAINTAINER Demien "demien@appannie.com"
 
 # Pip package
-RUN pip install psutil Pyro4 kombu ipdb billiard pytz
+RUN pip install psutil Pyro4==4.45 kombu ipdb billiard pytz
 
 # Install Redis
 RUN apt-get update && \
@@ -16,3 +16,4 @@ RUN echo -e "# start redis-server\nservice redis-server start\n" >> /etc/bash.ba
 
 # celery env
 ENV PYTHONPATH /var/celery/
+ENV PYRO_SERIALIZERS_ACCEPTED pickle

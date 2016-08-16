@@ -12,6 +12,7 @@ DEFAULT_QUEUE = {
     'demien': 'simple',
 }
 HUB_IP = socket.gethostbyname(socket.gethostname())
+print HUB_IP
 BROKER_URL = 'redis://%s:6379/0' % HUB_IP
 # HUB_IP = '192.168.1.52'
 # BROKER_URL = 'redis://localhost:6379/0'
