@@ -6,10 +6,13 @@ RUN pip install psutil Pyro4 kombu ipdb billiard pytz
 
 # Install Redis
 RUN apt-get update && \
-    apt-get install -y redis-server
-# RUN update-rc.d redis_server defaults
+    apt-get install -y redis-server \
+    vim \
+    sudo \
+    curl \
+    chkconfig
+# RUN update-rc.d redis-server defaults
+RUN echo -e "# start redis-server\nservice redis-server start\n" >> /etc/bash.bashrc
 
-# Install celery
-# RUN ln -s /var/popcorn/celery/celery /usr/local/bin/celery
-# RUN chmod 744 /var/popcorn/celery/celery
-# ENV PYTHONPATH /var/celery/
+# celery env
+ENV PYTHONPATH /var/celery/
