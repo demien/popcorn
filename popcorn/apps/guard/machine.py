@@ -16,15 +16,14 @@ class Machine(object):
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
         self._plan = defaultdict(int)
+        self.id = self.get_id()
 
-    @property
-    def id(self):
+    def get_id(self):
         name = socket.gethostname()
         ip = socket.gethostbyname(name)
         return '%s@%s' % (name, ip)
 
-    @property
-    def healthy(self):
+    def is_healthy(self):
         return self.hardware.healthy
 
     def snapshot(self):
