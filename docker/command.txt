@@ -1,5 +1,0 @@
-# build image
-docker build -t demien/popcorn ~/Documents/git_projects/popcorn/docker/
-
-# create container
-docker run -i -t -p 5555:5555 -p 9090:9090 -p 6379:6379 --name popcorn -v /Users/demien/Documents/git_projects/celery:/var/celery/ -v /Users/demien/Documents/git_projects/popcorn:/var/popcorn/ -w /var/popcorn/examples demien/popcorn /bin/bash

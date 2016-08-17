@@ -4,3 +4,6 @@ chmod 744 /var/popcorn/celery/celery
 
 # install popcorn
 pip install -e /var/popcorn
+
+# start redis
+service redis-server start
