@@ -1,22 +1,19 @@
-from popcorn.commands import BaseCommand
+import threading
 import time
-import logging
-from celery import bootsteps
 from celery.utils.imports import instantiate
-from multiprocessing import Process
+
 from popcorn.apps.base import BaseApp
 from popcorn.apps.constants import TIME_SCALE
-from popcorn.apps.hub import Hub
-from popcorn.apps.utils.broker_util import taste_soup
-from popcorn.rpc.pyro import RPCClient
+from popcorn.apps.hub import hub_report_demand
 from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
 from popcorn.apps.hub.state import add_planner
+from popcorn.apps.utils import start_back_ground_task, terminate_thread
+from popcorn.apps.utils.broker_util import taste_soup
+from popcorn.rpc.pyro import RPCClient
 from popcorn.utils.log import get_log_obj
-
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 HEARTBEAT_INTERVAL = 5
-
 
 STRATEGY_MAP = {
     'simple': 'popcorn.apps.planner.strategy.simple:SimpleStrategy'
@@ -24,26 +21,18 @@ STRATEGY_MAP = {
 
 
 class RegisterPlanner(BaseApp):
-
-    class Blueprint(bootsteps.Blueprint):
-
-        """Hub bootstep blueprint."""
-        name = 'RegisterPlanner'
-        default_steps = set([
-            'popcorn.rpc.pyro:RPCClient',
-            'popcorn.apps.planner:Register',
-        ])
-
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         self.steps = []
         self.setup_defaults(**kwargs)
         self.setup_instance(**kwargs)
-        self.blueprint = self.Blueprint(app=self.app)
-        self.blueprint.apply(self)
+        RPCClient(None).create(self)  # this operation will bind rpc_client on self
 
     def start(self):
-        self.blueprint.start(self)
+        self.rpc_client.start('popcorn.apps.planner:schedule_planner',
+                              app=self.app,
+                              queue=self.queue,
+                              strategy_name=self.strategy_name)
 
     def setup_defaults(self, loglevel=None, logfile=None, queue=None, strategy=None, **_kw):
         self.queue = self._getopt('queue', queue)
@@ -53,114 +42,106 @@ class RegisterPlanner(BaseApp):
 
 
 class Planner(object):
+    instances = {
 
-    class Blueprint(bootsteps.Blueprint):
+    }  # key queue name , value : instance
 
-        """Hub bootstep blueprint."""
-        name = 'Planner'
-        default_steps = set([
-            'popcorn.rpc.pyro:RPCClient',
-            'popcorn.apps.planner:Strategy',
-            'popcorn.apps.planner:Loop',
-        ])
+    threading_pool = {
+
+    }  # key: planner instance, value : planner's thread
+
+    @classmethod
+    def get_instance(cls, app, queue, strategy_name):
+        ins = cls.instances.get(queue)
+        if not ins:
+            ins = Planner(app, queue, strategy_name)
+            cls.instances[queue] = ins
+            info('[Planner] - [Duplicated] %s', queue)
+        return ins
 
     def __init__(self, app, queue, strategy_name):
         self.app = app or self.app
         self.steps = []
-        self.blueprint = self.Blueprint(app=self.app)
         self.queue = queue
         self.strategy_name = strategy_name
-        self.blueprint.apply(self)
-
-    def start(self):
+        strategy_cls = STRATEGY_MAP[strategy_name]
+        self.strategy = instantiate(strategy_cls)
+        self.continue_flag = True
         info('[Planner] - [Register] - Queue: %s, Strategy: %s' % (self.queue, self.strategy_name))
         add_planner(self.queue, self.strategy_name)
-        self.blueprint.start(self)
+
+    @property
+    def alive(self):
+        return self.get_thread() is not None
+
+    def restart(self):
+        self.start(restart=True)
+
+    def __str__(self):
+        return '<Planner %s:%s>' % (self.strategy_name, self.queue)
 
     def plan(self):
+
         while True:
-            debug('[Planner] - [HeartBeat] - %s:%s' % (self.queue, self.strategy_name))
-            previous_timestampe = int(round(time.time() * TIME_SCALE))
+            debug('[Planner] - [HeartBeat] - %s , Thread %s', self, threading.current_thread())
+            previous_timestamp = int(round(time.time() * TIME_SCALE))
             previous_status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             time.sleep(HEARTBEAT_INTERVAL)
-            timestampe = int(round(time.time() * TIME_SCALE))
+            timestamp = int(round(time.time() * TIME_SCALE))
             status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             result = self.strategy.apply(
                 previous_status=previous_status,
-                previous_time=previous_timestampe,
+                previous_time=previous_timestamp,
                 status=status,
-                time=timestampe
+                time=timestamp
             )
+            if self.continue_flag != True:
+                info('[Planner] - [Stop Scan] ...')
+                break
             if result:
                 cmd = WorkerInstruction.generate_instruction_cmd(self.queue, result)
                 info('[Planner] - [Report New Demand] - %s' % str(cmd))
-                self.rpc_client.start('popcorn.apps.hub:hub_report_demand', type=InstructionType.WORKER, cmd=cmd)
+                hub_report_demand(type=InstructionType.WORKER, cmd=cmd)
+
+    def start(self, restart=True):
+        debug('[Planner] - [Start(restart=%s)] - %s' % (restart, self))
+        if self.get_thread():
+            if restart:
+                self.stop()
+                self.start(restart=False)
+            else:
+                raise Exception('thread already exist')
+        else:
+            self.continue_flag = True
+            Planner.threading_pool[self] = start_back_ground_task(self.plan)
+
+    def stop(self, blocking=True):
+        debug('[Planner] - [Stop] - %s' % self)
+        thread = self.pop_thread()
+        if thread is None:
+            return
+        else:
+            self.continue_flag = False
+            if blocking:
+                thread.join(timeout=10)
+            else:
+                start_back_ground_task(self.force_quit, args=(thread,))
+
+    def force_quit(self, thread):
+        time.sleep(HEARTBEAT_INTERVAL * 2)
+        terminate_thread(thread)
+
+    def get_thread(self):
+        return Planner.threading_pool.get(self, None)
+
+    def pop_thread(self):
+        return Planner.threading_pool.pop(self, None)
 
 
-class Strategy(bootsteps.StartStopStep):
-
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        strategy_cls = STRATEGY_MAP[p.strategy_name]
-        p.strategy = instantiate(strategy_cls)
-        return self
-
-    def start(self, p):
-        pass
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
-
-
-class Loop(bootsteps.StartStopStep):
-    requires = (Strategy, RPCClient, )
-
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        self.process = Process(target=p.plan)
-        self.process.start()
-        return self
-
-    def start(self, p):
-        pass
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
-
-
-class Register(bootsteps.StartStopStep):
-    requires = (RPCClient, )
-
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        return self
-
-    def start(self, p):
-        p.rpc_client.start('popcorn.apps.planner:Planner', app=p.app, queue=p.queue, strategy_name=p.strategy_name)
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
+def schedule_planner(app, queue, strategy_name):
+    debug('Schedule planner : queue %s:%s', queue, strategy_name)
+    planner = Planner.get_instance(app, queue, strategy_name)
+    if planner.alive:
+        planner.restart()
+    else:
+        planner.start()

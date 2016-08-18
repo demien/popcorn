@@ -1,21 +1,15 @@
-import math
-import os
 import json
+import math
 import traceback
-
 from celery import bootsteps
-from celery.bootsteps import RUN, TERMINATE
-from collections import defaultdict
 
+import state
 from popcorn.apps.base import BaseApp
-from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
 from popcorn.utils.log import get_log_obj
-
 from state import (
     DEMAND, PLAN, MACHINES, PLANNERS, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
-
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 
@@ -95,11 +89,11 @@ class Hub(BaseApp):
         if target == ScanTarget.MACHINE:
             return dict(MACHINES)
         if target == ScanTarget.PLANNER:
+            critical(state.PLANNERS)
             return dict(PLANNERS)
 
 
 class LoadPlanners(bootsteps.StartStopStep):
-
     def __init__(self, p, **kwargs):
         pass
 
@@ -110,9 +104,9 @@ class LoadPlanners(bootsteps.StartStopStep):
         return self
 
     def start(self, p):
-        from popcorn.apps.planner import Planner
+        from popcorn.apps.planner import schedule_planner
         for queue, strategy in p.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            Planner(p.app, queue=queue, strategy_name=strategy).start()
+            schedule_planner(p.app, queue, strategy)
 
     def stop(self, p):
         print 'in stop'
@@ -140,6 +134,7 @@ def hub_report_demand(type, cmd):
 
 def hub_guard_register(machine):
     return Hub.guard_register(machine)
+
 
 def hub_scan(target):
     return Hub.scan(target)

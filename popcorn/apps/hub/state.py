@@ -1,7 +1,10 @@
 from collections import defaultdict
+
 from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
+from popcorn.utils.log import get_log_obj
 
+debug, info, warn, error, critical = get_log_obj(__name__)
 
 #: Demand update by planner.
 #: Planner monitoring the queue and calculate the demond
@@ -10,16 +13,14 @@ DEMAND = defaultdict(int)
 
 
 def add_demand(queue, worker_cnt):
-    global DEMAND
     DEMAND[queue] = worker_cnt
 
 
 def remove_demand(queue):
-    global DEMAND
     DEMAND.pop(queue)
 
+
 def get_worker_cnt(queue):
-    global DEMAND
     return DEMAND[queue]
 
 
@@ -34,7 +35,6 @@ def add_plan(queue, machine, worker_cnt):
 
 
 def pop_order(machine_id):
-    global PLAN
     order = Order()
     for queue, _plan in PLAN.iteritems():
         if not _plan[machine_id]:
@@ -48,14 +48,15 @@ def pop_order(machine_id):
 #: All the machine register to hub. It's a list.
 MACHINES = defaultdict(lambda: None)
 
+
 def update_machine(machine):
-    global MACHINES
     MACHINES[machine.id] = machine
 
 
 #: All the planner, including queue and strategy
 PLANNERS = defaultdict(str)
 
+
 def add_planner(queue, strategy):
-    global PLANNERS
+    critical("Add planner ... %s %s", queue, strategy)
     PLANNERS[queue] = strategy
