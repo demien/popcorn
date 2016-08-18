@@ -31,7 +31,7 @@ class Guard(BaseApp):
         self.steps = []
         self.processes = defaultdict(list)
         self.pool = Pool(self.app)
-        self.machine = Machine()
+        self.machine = Machine(healthy_mock=app.conf['HEALTHY_MOCK'])
         self.setup_defaults(**kwargs)
         self.setup_instance(**kwargs)
         self.blueprint = self.Blueprint(app=self.app)

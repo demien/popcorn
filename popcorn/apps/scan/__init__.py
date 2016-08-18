@@ -60,9 +60,12 @@ class DoScan(bootsteps.StartStopStep):
 
     def _scan_machine(self, machines):
         for id, machine in machines.iteritems():
+            snapshot = machine.snapshots[-1]
             print self.TAB, self.SEPERATOR
             print self.TAB, 'id: %s' % id
-            print machine.hardware.to_string()
+            print self.TAB, 'update_time: %s' % snapshot['time']
+            print self.TAB, 'healthy: %s' % snapshot['healthy']
+            print snapshot['hardware']
 
     def _scan_planner(self, planners):
         for queue, strategy in planners.iteritems():

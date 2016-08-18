@@ -11,12 +11,13 @@ class Machine(object):
 
     _CPU_WINDOW_SIZE = 5
 
-    def __init__(self):
+    def __init__(self, healthy_mock=False):
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
         self._plan = defaultdict(int)
         self.id = self.get_id()
+        self.healthy_mock = healthy_mock
 
     def get_id(self):
         name = socket.gethostname()
@@ -24,6 +25,8 @@ class Machine(object):
         return '%s@%s' % (name, ip)
 
     def is_healthy(self):
+        if self.healthy_mock:
+            return True
         return self.hardware.healthy
 
     def snapshot(self):
@@ -127,7 +130,9 @@ class Camera(object):
         self.machine = machine
 
     def snapshot(self):
-        snapshot = {'time': datetime.now()}
-        for component in self.machine.hardware.COMPONENTS:
-            snapshot[component.name] = component.value
+        snapshot = {
+            'time': datetime.now(),
+            'healthy': self.machine.hardware.healthy,
+            'hardware': self.machine.hardware.to_string(),
+        }
         return snapshot
