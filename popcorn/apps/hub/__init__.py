@@ -1,13 +1,17 @@
 import json
-import math
+import Pyro4
 import traceback
 from celery import bootsteps
+from celery.bootsteps import RUN, TERMINATE
+from collections import defaultdict
 
 import state
 from popcorn.apps.base import BaseApp
+from popcorn.apps.guard.machine import Machine
 from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
 from popcorn.utils.log import get_log_obj
+
 from state import (
     DEMAND, PLAN, MACHINES, PLANNERS, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
@@ -73,7 +77,7 @@ class Hub(BaseApp):
 
     @staticmethod
     def load_balancing(queue, worker_cnt):
-        healthy_machines = [machine for machine in MACHINES.values() if machine.healthy]
+        healthy_machines = [machine for machine in MACHINES.values() if machine.is_healthy()]
         if not healthy_machines:
             warn('[Hub] - [Warning] - No Healthy Machines!')
             return False
@@ -89,11 +93,11 @@ class Hub(BaseApp):
         if target == ScanTarget.MACHINE:
             return dict(MACHINES)
         if target == ScanTarget.PLANNER:
-            critical(state.PLANNERS)
             return dict(PLANNERS)
 
 
 class LoadPlanners(bootsteps.StartStopStep):
+
     def __init__(self, p, **kwargs):
         pass
 
@@ -119,6 +123,7 @@ class RPCServer(_RPCServer):
     requires = (LoadPlanners,)
 
 
+@Pyro4.expose
 def hub_guard_heartbeat(machine):
     """
     :param id:
@@ -128,13 +133,16 @@ def hub_guard_heartbeat(machine):
     return Hub.guard_heartbeat(machine)
 
 
+@Pyro4.expose
 def hub_report_demand(type, cmd):
     return Hub.report_demand(type, cmd)
 
 
+@Pyro4.expose
 def hub_guard_register(machine):
     return Hub.guard_register(machine)
 
 
+@Pyro4.expose
 def hub_scan(target):
     return Hub.scan(target)
