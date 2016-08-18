@@ -80,7 +80,7 @@ class Hub(BaseApp):
 
     @staticmethod
     def load_balancing(queue, worker_cnt):
-        healthy_machines = [machine for machine in MACHINES.values() if machine.is_healthy()]
+        healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
         if not healthy_machines:
             warn('[Hub] - [Warning] - No Healthy Machines!')
             return False
