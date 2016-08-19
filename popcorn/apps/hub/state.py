@@ -51,12 +51,3 @@ MACHINES = defaultdict(lambda: None)
 
 def update_machine(machine):
     MACHINES[machine.id] = machine
-
-
-#: All the planner, including queue and strategy
-PLANNERS = defaultdict(str)
-
-
-def add_planner(queue, strategy):
-    critical("Add planner ... %s %s", queue, strategy)
-    PLANNERS[queue] = strategy

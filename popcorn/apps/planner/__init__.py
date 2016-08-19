@@ -1,3 +1,4 @@
+import ctypes
 import threading
 import time
 from celery.utils.imports import instantiate
@@ -6,8 +7,6 @@ from popcorn.apps.base import BaseApp
 from popcorn.apps.constants import TIME_SCALE
 from popcorn.apps.hub import hub_report_demand
 from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
-from popcorn.apps.hub.state import add_planner
-from popcorn.apps.utils import start_back_ground_task, terminate_thread
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import RPCClient
 from popcorn.utils.log import get_log_obj
@@ -18,6 +17,34 @@ HEARTBEAT_INTERVAL = 5
 STRATEGY_MAP = {
     'simple': 'popcorn.apps.planner.strategy.simple:SimpleStrategy'
 }
+
+
+def start_back_ground_task(target, args=()):
+    debug('[BG] Tast New Thread %r', target)
+    thread = threading.Thread(target=target, args=args)
+    thread.daemon = True
+    thread.start()
+    return thread
+
+
+def terminate_thread(thread):
+    """Terminates a python thread from another thread.
+
+    :param thread: a threading.Thread instance
+    """
+    if not thread.isAlive():
+        return
+
+    exc = ctypes.py_object(SystemExit)
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+        ctypes.c_long(thread.ident), exc)
+    if res == 0:
+        raise ValueError("nonexistent thread id")
+    elif res > 1:
+        # """if it returns a number greater than one, you're in trouble,
+        # and you should call it again with exc=NULL to revert the effect"""
+        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, None)
+        raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
 class RegisterPlanner(BaseApp):
@@ -42,13 +69,7 @@ class RegisterPlanner(BaseApp):
 
 
 class Planner(object):
-    instances = {
-
-    }  # key queue name , value : instance
-
-    threading_pool = {
-
-    }  # key: planner instance, value : planner's thread
+    instances = {}  # key queue name , value : instance
 
     @classmethod
     def get_instance(cls, app, queue, strategy_name):
@@ -59,6 +80,10 @@ class Planner(object):
             info('[Planner] - [Duplicated] %s', queue)
         return ins
 
+    @classmethod
+    def stats(cls):
+        return {q: str(v) for q, v in cls.instances.items()}
+
     def __init__(self, app, queue, strategy_name):
         self.app = app or self.app
         self.steps = []
@@ -68,32 +93,31 @@ class Planner(object):
         self.strategy = instantiate(strategy_cls)
         self.continue_flag = True
         info('[Planner] - [Register] - Queue: %s, Strategy: %s' % (self.queue, self.strategy_name))
-        add_planner(self.queue, self.strategy_name)
+        self.thread = None
 
     @property
     def alive(self):
-        return self.get_thread() is not None
+        return self.thread is not None
 
     def restart(self):
         self.start(restart=True)
 
     def __str__(self):
-        return '<Planner %s:%s>' % (self.strategy_name, self.queue)
+        return '<Planner %s:%s>(Alive:%s)' % (self.strategy_name, self.queue, self.alive)
 
     def plan(self):
-
+        status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
         while True:
             debug('[Planner] - [HeartBeat] - %s , Thread %s', self, threading.current_thread())
             previous_timestamp = int(round(time.time() * TIME_SCALE))
-            previous_status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
+            previous_status = status
             time.sleep(HEARTBEAT_INTERVAL)
-            timestamp = int(round(time.time() * TIME_SCALE))
             status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             result = self.strategy.apply(
                 previous_status=previous_status,
                 previous_time=previous_timestamp,
                 status=status,
-                time=timestamp
+                time=int(round(time.time() * TIME_SCALE))
             )
             if self.continue_flag != True:
                 info('[Planner] - [Stop Scan] ...')
@@ -105,7 +129,7 @@ class Planner(object):
 
     def start(self, restart=True):
         debug('[Planner] - [Start(restart=%s)] - %s' % (restart, self))
-        if self.get_thread():
+        if self.thread:
             if restart:
                 self.stop()
                 self.start(restart=False)
@@ -113,29 +137,24 @@ class Planner(object):
                 raise Exception('thread already exist')
         else:
             self.continue_flag = True
-            Planner.threading_pool[self] = start_back_ground_task(self.plan)
+            self.thread = start_back_ground_task(self.plan)
 
     def stop(self, blocking=True):
         debug('[Planner] - [Stop] - %s' % self)
-        thread = self.pop_thread()
-        if thread is None:
+        if self.thread is None:
             return
         else:
             self.continue_flag = False
             if blocking:
-                thread.join(timeout=10)
+                self.thread.join(timeout=10)
+                self.thread = None
             else:
-                start_back_ground_task(self.force_quit, args=(thread,))
+                start_back_ground_task(self.force_quit, args=(self.thread,))
 
     def force_quit(self, thread):
         time.sleep(HEARTBEAT_INTERVAL * 2)
         terminate_thread(thread)
-
-    def get_thread(self):
-        return Planner.threading_pool.get(self, None)
-
-    def pop_thread(self):
-        return Planner.threading_pool.pop(self, None)
+        self.thread = None
 
 
 def schedule_planner(app, queue, strategy_name):

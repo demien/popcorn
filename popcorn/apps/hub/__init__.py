@@ -1,4 +1,5 @@
 import json
+import math
 import Pyro4
 import traceback
 from celery import bootsteps
@@ -12,8 +13,9 @@ from popcorn.apps.hub.order.instruction import Instruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
 from popcorn.utils.log import get_log_obj
 
+
 from state import (
-    DEMAND, PLAN, MACHINES, PLANNERS, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
+    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 
@@ -90,10 +92,11 @@ class Hub(BaseApp):
     @staticmethod
     def scan(target):
         from popcorn.apps.scan import ScanTarget
+        from popcorn.apps.planner import Planner
         if target == ScanTarget.MACHINE:
             return dict(MACHINES)
         if target == ScanTarget.PLANNER:
-            return dict(PLANNERS)
+            return Planner.stats()
 
 
 class LoadPlanners(bootsteps.StartStopStep):
