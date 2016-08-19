@@ -5,8 +5,8 @@ from celery.utils.imports import instantiate
 
 from popcorn.apps.base import BaseApp
 from popcorn.apps.constants import TIME_SCALE
-from popcorn.apps.hub import hub_report_demand
-from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
+from popcorn.apps.hub import Hub
+from popcorn.apps.hub.order.instruction import InstructionType
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import RPCClient
 from popcorn.utils.log import get_log_obj
@@ -77,7 +77,6 @@ class Planner(object):
         if not ins:
             ins = Planner(app, queue, strategy_name)
             cls.instances[queue] = ins
-            info('[Planner] - [Duplicated] %s', queue)
         return ins
 
     @classmethod
@@ -123,9 +122,7 @@ class Planner(object):
                 info('[Planner] - [Stop Scan] ...')
                 break
             if result:
-                cmd = WorkerInstruction.generate_instruction_cmd(self.queue, result)
-                info('[Planner] - [Report New Demand] - %s' % str(cmd))
-                hub_report_demand(type=InstructionType.WORKER, cmd=cmd)
+                Hub.report_demand(InstructionType.WORKER, self.queue, result)
 
     def start(self, restart=True):
         debug('[Planner] - [Start(restart=%s)] - %s' % (restart, self))

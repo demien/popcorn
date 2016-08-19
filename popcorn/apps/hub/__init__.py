@@ -1,19 +1,14 @@
+import Pyro4
 import json
 import math
-import Pyro4
 import traceback
 from celery import bootsteps
-from celery.bootsteps import RUN, TERMINATE
-from collections import defaultdict
 
 import state
 from popcorn.apps.base import BaseApp
-from popcorn.apps.guard.machine import Machine
-from popcorn.apps.hub.order.instruction import Instruction
+from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
 from popcorn.utils.log import get_log_obj
-
-
 from state import (
     DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
@@ -66,8 +61,9 @@ class Hub(BaseApp):
             remove_demand(queue)
 
     @staticmethod
-    def report_demand(type, cmd):
-        instruction = Instruction.create(type, cmd)
+    def report_demand(type, queue, result):
+        debug('[Hub] - [Deman] - %s : %s' % (queue, result))
+        instruction = Instruction.create(type, WorkerInstruction.generate_instruction_cmd(queue, result))
         current_worker_cnt = get_worker_cnt(instruction.queue)
         new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
         add_demand(instruction.queue, new_worker_cnt)
@@ -100,7 +96,6 @@ class Hub(BaseApp):
 
 
 class LoadPlanners(bootsteps.StartStopStep):
-
     def __init__(self, p, **kwargs):
         pass
 
