@@ -7,7 +7,6 @@ from machine import Machine
 from pool import Pool
 from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order.instruction import Operator
-from popcorn.apps.utils import taste_soup
 from popcorn.rpc.pyro import RPCClient
 from popcorn.utils.log import get_log_obj
 

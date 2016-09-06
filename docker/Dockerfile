@@ -2,7 +2,7 @@ FROM python:2.7
 MAINTAINER Demien "demien@appannie.com"
 
 # Pip package
-RUN pip install psutil Pyro4==4.45 kombu ipdb billiard pytz redis
+RUN pip install psutil Pyro4==4.45 kombu ipdb billiard pytz redis vine
 
 # Install Redis
 RUN apt-get update && \
@@ -10,7 +10,8 @@ RUN apt-get update && \
     vim \
     sudo \
     curl \
-    chkconfig
+    chkconfig \
+    htop
 RUN echo "\n# bind ip\nbind 0.0.0.0\n" >> /etc/redis/redis.conf
 
 # celery env
