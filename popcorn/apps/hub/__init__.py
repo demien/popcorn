@@ -119,28 +119,3 @@ class LoadPlanners(bootsteps.StartStopStep):
 
 class RPCServer(_RPCServer):
     requires = (LoadPlanners,)
-
-
-@Pyro4.expose
-def hub_guard_heartbeat(machine):
-    """
-    :param id:
-    :param stats: dict contains memory & cpu use
-    :return:
-    """
-    return Hub.guard_heartbeat(machine)
-
-
-@Pyro4.expose
-def hub_report_demand(type, cmd):
-    return Hub.report_demand(type, cmd)
-
-
-@Pyro4.expose
-def hub_guard_register(machine):
-    return Hub.guard_register(machine)
-
-
-@Pyro4.expose
-def hub_scan(target):
-    return Hub.scan(target)

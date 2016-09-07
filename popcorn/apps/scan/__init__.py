@@ -50,7 +50,7 @@ class DoScan(bootsteps.StartStopStep):
         pass
 
     def start(self, p):
-        re = p.rpc_client.call('popcorn.apps.hub:hub_scan', target=p.target)
+        re = p.rpc_client.call('popcorn.apps.hub:Hub.scan', target=p.target)
         print self.HEADER_PATTERN % p.target
         if p.target == ScanTarget.MACHINE:
             self._scan_machine(re)
