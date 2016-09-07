@@ -19,7 +19,4 @@ class BaseRPCClient(object):
 class RPCDispatcher(object):
 
     def dispatch(self, func_path, *args, **kwargs):
-        instantiate(func_path, **kwargs)
-
-    def dispatch_with_return(self, func_path, *args, **kwargs):
         return instantiate(func_path, **kwargs)

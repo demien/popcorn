@@ -49,10 +49,7 @@ class PyroClient(BaseRPCClient, PyroBase):
         self.rpc_client = Pyro4.Proxy(uri)  # get local proxy obj
 
     def call(self, func_path, *args, **kwargs):
-        self.rpc_client.dispatch(func_path, *args, **kwargs)
-
-    def call_with_return(self, func_path, *args, **kwargs):
-        return self.rpc_client.dispatch_with_return(func_path, *args, **kwargs)
+        return self.rpc_client.dispatch(func_path, *args, **kwargs)
 
     def get_uri(self, obj_id, server_ip, port):
         return 'PYRO:%s@%s:%s' % (str(obj_id), str(server_ip), str(port))
