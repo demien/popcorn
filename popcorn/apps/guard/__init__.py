@@ -59,7 +59,7 @@ class Guard(BaseApp):
     def heartbeat(self, rpc_client):
         snapshot = self.machine.snapshot()
         debug('[Guard] - [HeartBeat] - RPC call to hub_guard_heartbeat')
-        return rpc_client.start_with_return('popcorn.apps.hub:hub_guard_heartbeat', machine=self.machine)
+        return rpc_client.call_with_return('popcorn.apps.hub:hub_guard_heartbeat', machine=self.machine)
 
     def follow_order(self, order):
         for instruction in order.instructions:
@@ -81,7 +81,7 @@ class Register(bootsteps.StartStopStep):
         return True
 
     def create(self, p):
-        p.rpc_client.start('popcorn.apps.hub:hub_guard_register', machine=p.machine)
+        p.rpc_client.call('popcorn.apps.hub:hub_guard_register', machine=p.machine)
         return self
 
     def start(self, p):

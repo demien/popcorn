@@ -56,7 +56,7 @@ class RegisterPlanner(BaseApp):
         RPCClient(None).create(self)  # this operation will bind rpc_client on self
 
     def start(self):
-        self.rpc_client.start('popcorn.apps.planner:schedule_planner',
+        self.rpc_client.call('popcorn.apps.planner:schedule_planner',
                               app=self.app,
                               queue=self.queue,
                               strategy_name=self.strategy_name)
