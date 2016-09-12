@@ -1,4 +1,5 @@
 import abc
+import Pyro4
 from popcorn.utils import instantiate
 
 
@@ -15,8 +16,8 @@ class BaseRPCClient(object):
     def call(self, func_path):
         raise NotImplementedError()
 
-
+@Pyro4.expose
 class RPCDispatcher(object):
 
     def dispatch(self, func_path, *args, **kwargs):
-        return instantiate(func_path, **kwargs)
+        return instantiate(func_path, *args, **kwargs)
