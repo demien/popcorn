@@ -33,16 +33,18 @@ class PyroServer(BaseRPCServer, PyroBase):
         self.daemon = Pyro4.Daemon(host=self.ip, port=self.port)  # init a Pyro daemon
         self.thread = None
 
-    def register(self, obj, obj_id=None):
-        return self.daemon.register(obj, obj_id)  # register a obj with obj id
-
-    def unregister(self, obj):
-        try:
-            return self.daemon.unregister(obj)
-        except Exception as e:
-            pass  # don't care for multi unregister
+    @property
+    def ip(self):
+        host = socket.gethostname()
+        return socket.gethostbyname(host)
 
     def start(self):
+        """
+        Start a pyro server
+
+        Fire a new thread for the server daemon loop.
+        This mehtod is blocking till the server daemon loop is ready.
+        """
         uri = self.register(RPCDispatcher, DISPATHCER_SERVER_OBJ_ID)
         thread = threading.Thread(target=self.daemon.requestLoop)
         thread.daemon = True
@@ -53,6 +55,14 @@ class PyroServer(BaseRPCServer, PyroBase):
         info('[RPC Server] - [Start] - %s' % uri)
 
     def stop(self):
+        """
+        Stop the pyro server
+
+        Notice. the step order is quite important and can not change.
+        Step 1: stop the daemon loop
+        Step 2: stop the socket server
+        Step 3: unregister the dispather class
+        """
         self.daemon.shutdown()
         if self.thread is not None and self.thread.is_alive():
             while self.thread.is_alive():
@@ -61,21 +71,38 @@ class PyroServer(BaseRPCServer, PyroBase):
         self.unregister(RPCDispatcher)
         info('[RPC Server] - [Shutdown] - exit daemon loop')
 
-    @property
-    def ip(self):
-        host = socket.gethostname()
-        return socket.gethostbyname(host)
+    def register(self, obj, obj_id=None):
+        """
+        Register the obj to the server.
+        """
+        return self.daemon.register(obj, obj_id)  # register a obj with obj id
+
+    def unregister(self, obj):
+        """
+        Unregister the obj from the server.
+        Ignore if unregister an unexist obj.
+        """
+        try:
+            return self.daemon.unregister(obj)
+        except Exception as e:
+            pass  # don't care for multi unregister
 
 
 class PyroClient(BaseRPCClient, PyroBase):
 
     def __init__(self, server_ip):
         PyroBase.__init__(self)
-        uri = self.get_uri(DISPATHCER_SERVER_OBJ_ID, server_ip, self.port)
-        self.default_proxy = self.get_proxy_obj(uri)  # get local proxy obj
+        dispatcher_uri = self.get_uri(DISPATHCER_SERVER_OBJ_ID, server_ip, self.port)
+        self.default_proxy = self.get_proxy_obj(dispatcher_uri)  # get local proxy obj
 
-    def call(self, func_path, *args, **kwargs):
-        return self.default_proxy.dispatch(func_path, *args, **kwargs)
+    def call(self, path, *args, **kwargs):
+        """
+        Call a remote obj or class.
+
+        :param str path: the path of the callable obj. A valid one: popcorn.apps.hub:Hub.scan.
+         More detail of path please check popcorn.utils.imports.symbol_by_name
+        """
+        return self.default_proxy.dispatch(path, *args, **kwargs)
 
     def get_proxy_obj(self, uri):
         return Pyro4.Proxy(uri)

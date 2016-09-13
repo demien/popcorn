@@ -1,6 +1,4 @@
 import unittest
-import threading
-import time
 from popcorn.rpc.pyro import PyroServer, PyroClient
 
 
@@ -25,7 +23,6 @@ class PyroBase(unittest.TestCase):
 class TestServer(PyroBase):
 
     def test_server_start_stop(self):
-        self.assertEqual(type(self.server.thread), threading.Thread)
         self.assertTrue(self.server.thread.is_alive())
         self.server.stop()
         self.assertFalse(self.server.thread.is_alive())
@@ -55,7 +52,7 @@ class TestClient(PyroBase):
 
 
 class pickle_class(object):
-    age = 1
+    age = 6
     def name(self):
         return 'app annie'
     def __repr__(self):
@@ -64,10 +61,3 @@ class pickle_class(object):
 
 def echo(foo):
     return foo
-
-
-if __name__ == '__main__':
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    [suite.addTest(loader.loadTestsFromTestCase(_cls)) for _cls in [TestServer, TestClient]]
-    unittest.TextTestRunner(verbosity=2).run(suite)

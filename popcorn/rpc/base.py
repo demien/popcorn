@@ -1,6 +1,6 @@
 import abc
 import Pyro4
-from popcorn.utils import instantiate
+from popcorn.utils import call_callable
 
 
 class BaseRPCServer(object):
@@ -20,4 +20,4 @@ class BaseRPCClient(object):
 class RPCDispatcher(object):
 
     def dispatch(self, func_path, *args, **kwargs):
-        return instantiate(func_path, *args, **kwargs)
+        return call_callable(func_path, *args, **kwargs)

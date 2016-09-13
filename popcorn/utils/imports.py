@@ -2,8 +2,8 @@ import importlib
 import sys
 
 
-def instantiate(name, *args, **kwargs):
-    """Instantiate class or method by name.
+def call_callable(name, *args, **kwargs):
+    """call a callable object.
 
     See :func:`symbol_by_name`.
 
@@ -54,9 +54,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None, sep='.', default=No
         try:
             module = imp(module_name, package=package, **kwargs)
         except ValueError as exc:
-            reraise(ValueError,
-                    ValueError("Couldn't import {0!r}: {1}".format(name, exc)),
-                    sys.exc_info()[2])
+            raise(ValueError, ValueError("Couldn't import {0!r}: {1}".format(name, exc)), sys.exc_info()[2])
         if cls_name:
             obj = module
             for obj_name in cls_name.split('.'):
@@ -64,7 +62,6 @@ def symbol_by_name(name, aliases={}, imp=None, package=None, sep='.', default=No
             return obj
         else:
             return module
-
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):
         if default is None:
