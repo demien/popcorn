@@ -5,7 +5,7 @@ import threading
 from celery import bootsteps
 from popcorn.rpc import DISPATHCER_SERVER_OBJ_ID, PORT
 from popcorn.rpc.base import BaseRPCServer, BaseRPCClient, RPCDispatcher
-from popcorn.utils.log import get_log_obj
+from popcorn.utils import get_log_obj
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)

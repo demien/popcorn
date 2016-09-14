@@ -33,6 +33,7 @@ class Guard(BaseApp):
         self.machine = Machine(healthy_mock=app.conf['HEALTHY_MOCK'])
         self.setup_defaults(**kwargs)
         self.setup_instance(**kwargs)
+        super(Guard, self).init(**kwargs)
         self.blueprint = self.Blueprint(app=self.app)
         self.blueprint.apply(self)
 

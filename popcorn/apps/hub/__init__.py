@@ -1,14 +1,17 @@
-import Pyro4
+from popcorn.rpc.pyro import PyroServer
 import json
 import math
 import traceback
+import threading
+import time
+import os
 from celery import bootsteps
 
 import state
 from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction
 from popcorn.rpc.pyro import RPCServer as _RPCServer
-from popcorn.utils.log import get_log_obj
+from popcorn.utils import get_log_obj, get_pid
 from state import (
     DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
@@ -16,25 +19,48 @@ debug, info, warn, error, critical = get_log_obj(__name__)
 
 
 class Hub(BaseApp):
-    class Blueprint(bootsteps.Blueprint):
-        """Hub bootstep blueprint."""
-        name = 'Hub'
-        default_steps = set([
-            'popcorn.apps.hub:LoadPlanners',
-            'popcorn.apps.hub:RPCServer',  # fix me, dynamic load rpc portal
-        ])
 
     def __init__(self, app, **kwargs):
         self.app = app or self.app
-        self.steps = []
+        self.rpc_server = PyroServer()  # fix me, load it dynamiclly
+
+        self.__shutdown_hub = threading.Event()
+        self.__shutdown_demand_analyse = threading.Event()
+        self.DEMAND_ANALYSE_INTERVAL = 10  # second
         self.setup_defaults(**kwargs)
         self.setup_instance(**kwargs)
+        super(Hub, self).init(**kwargs)
 
-        self.blueprint = self.Blueprint(app=self.app)
-        self.blueprint.apply(self, **kwargs)
+    def demand_analyse_loop(self, condition=lambda: True):
+        debug('[Hub] - [Demand analyse loop] - Start')
+        while not self.__shutdown_demand_analyse.isSet() and condition:
+            Hub.analyze_demand()
+            time.sleep(self.DEMAND_ANALYSE_INTERVAL)
+        debug('[Hub] - [Demand analyse loop] - Exit')
 
-    def start(self):
-        self.blueprint.start(self)
+    def start(self, condition=lambda: True):
+        """
+        Start the hub.
+        Step 1. Start rpc server
+        Step 2. Start default planners thread
+        Step 3. Start demand analyse loop thread
+        Step 4. loop
+        """
+        self.__shutdown_hub.clear()
+        self.__shutdown_demand_analyse.clear()
+
+        self.rpc_server.start()
+
+        from popcorn.apps.planner import schedule_planner
+        for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
+            schedule_planner(self.app, queue, strategy)
+
+        thread = threading.Thread(target=self.demand_analyse_loop)
+        thread.daemon = True
+        thread.start()
+
+        while not self.__shutdown_hub.isSet() and condition:
+            continue
 
     @staticmethod
     def guard_heartbeat(machine):
@@ -93,29 +119,3 @@ class Hub(BaseApp):
             return dict(MACHINES)
         if target == ScanTarget.PLANNER:
             return Planner.stats()
-
-
-class LoadPlanners(bootsteps.StartStopStep):
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        return self
-
-    def start(self, p):
-        from popcorn.apps.planner import schedule_planner
-        for queue, strategy in p.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            schedule_planner(p.app, queue, strategy)
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
-
-
-class RPCServer(_RPCServer):
-    requires = (LoadPlanners,)

@@ -132,7 +132,7 @@ class Camera(object):
     def snapshot(self):
         snapshot = {
             'time': datetime.now(),
-            'healthy': self.machine.hardware.healthy,
+            'healthy': self.machine.is_healthy(),
             'hardware': self.machine.hardware.to_string(),
         }
         return snapshot

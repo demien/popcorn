@@ -1,6 +1,14 @@
-from celery.utils.log import get_logger
+import logging
+from collections import defaultdict
 
 
 def get_log_obj(name):
-    logger = get_logger(name)
+    logger = logging.getLogger(name)
+    cache_logger = defaultdict(None)
+    if cache_logger.get(name) is not None:
+        logger = cache_logger[name]
+    else:
+        logger = logging.getLogger(name)
+        cache_logger[name] = logger
+
     return logger.debug, logger.info, logger.warning, logger.error, logger.critical

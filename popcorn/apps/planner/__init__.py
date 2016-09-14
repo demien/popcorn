@@ -9,7 +9,7 @@ from popcorn.apps.hub import Hub
 from popcorn.apps.hub.order.instruction import InstructionType
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import RPCClient
-from popcorn.utils.log import get_log_obj
+from popcorn.utils import get_log_obj, get_pid
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 HEARTBEAT_INTERVAL = 5
@@ -53,6 +53,7 @@ class RegisterPlanner(BaseApp):
         self.steps = []
         self.setup_defaults(**kwargs)
         self.setup_instance(**kwargs)
+        super(RegisterPlanner, self).init(**kwargs)
         RPCClient(None).create(self)  # this operation will bind rpc_client on self
 
     def start(self):
@@ -102,12 +103,12 @@ class Planner(object):
         self.start(restart=True)
 
     def __str__(self):
-        return '<Planner %s:%s>(Alive:%s)' % (self.strategy_name, self.queue, self.alive)
+        return '<Planner %s:%s> (Alive:%s)' % (self.strategy_name, self.queue, self.alive)
 
     def plan(self):
         status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
         while True:
-            debug('[Planner] - [HeartBeat] - %s , Thread %s', self, threading.current_thread())
+            debug('[Planner] - [HeartBeat] - %s , Thread %s. PID: %s', self, threading.current_thread(), get_pid())
             previous_timestamp = int(round(time.time() * TIME_SCALE))
             previous_status = status
             time.sleep(HEARTBEAT_INTERVAL)

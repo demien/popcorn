@@ -1,8 +1,17 @@
+import logging
+
+LOGLEVEL = None
+
 class BaseApp(object):
+
+    def init(self, **kwargs):
+        self.init_log()
+
+    def init_log(self, **kwargs):
+        self.on_init_blueprint(**kwargs)
 
     def setup_instance(self, **kwargs):
         self.no_color = None
-        self.on_init_blueprint(**kwargs)
 
     def on_init_blueprint(self, **kwargs):
         self._custom_logging = self.setup_logging()
