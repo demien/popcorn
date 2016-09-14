@@ -50,10 +50,8 @@ def terminate_thread(thread):
 class RegisterPlanner(BaseApp):
     def __init__(self, app, **kwargs):
         self.app = app or self.app
-        self.steps = []
-        self.setup_defaults(**kwargs)
-        self.setup_instance(**kwargs)
         super(RegisterPlanner, self).init(**kwargs)
+        self.steps = []
         RPCClient(None).create(self)  # this operation will bind rpc_client on self
 
     def start(self):
@@ -101,9 +99,6 @@ class Planner(object):
 
     def restart(self):
         self.start(restart=True)
-
-    # def __str__(self):
-    #     return '<Planner %s:%s> (Alive:%s)' % (self.strategy_name, self.queue, self.alive)
 
     def __repr__(self):
         return 'Queue: %s Strategy: %s' % (self.strategy_name, self.queue)

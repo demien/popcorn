@@ -22,14 +22,11 @@ class Hub(BaseApp):
 
     def __init__(self, app, **kwargs):
         self.app = app or self.app
+        super(Hub, self).init(**kwargs)
         self.rpc_server = PyroServer()  # fix me, load it dynamiclly
-
         self.__shutdown_hub = threading.Event()
         self.__shutdown_demand_analyse = threading.Event()
         self.DEMAND_ANALYSE_INTERVAL = 10  # second
-        self.setup_defaults(**kwargs)
-        self.setup_instance(**kwargs)
-        super(Hub, self).init(**kwargs)
 
     def demand_analyse_loop(self, condition=lambda: True):
         debug('[Hub] - [Start] - [Demand analyse loop] : PID %s' % get_pid())
