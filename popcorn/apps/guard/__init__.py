@@ -59,7 +59,7 @@ class Guard(BaseApp):
 
     def heartbeat(self, rpc_client):
         snapshot = self.machine.snapshot()
-        debug('[Guard] - [HeartBeat] - RPC call to hub_guard_heartbeat')
+        debug('[Guard] - [Send] - [HeartBeat]')
         return rpc_client.call('popcorn.apps.hub:Hub.guard_heartbeat', machine=self.machine)
 
     def follow_order(self, order):

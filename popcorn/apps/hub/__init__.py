@@ -32,11 +32,11 @@ class Hub(BaseApp):
         super(Hub, self).init(**kwargs)
 
     def demand_analyse_loop(self, condition=lambda: True):
-        debug('[Hub] - [Demand analyse loop] - Start')
+        debug('[Hub] - [Start] - [Demand analyse loop] : PID %s' % get_pid())
         while not self.__shutdown_demand_analyse.isSet() and condition:
             Hub.analyze_demand()
             time.sleep(self.DEMAND_ANALYSE_INTERVAL)
-        debug('[Hub] - [Demand analyse loop] - Exit')
+        debug('[Hub] - [Exit] - [Demand analyse loop]')
 
     def start(self, condition=lambda: True):
         """
@@ -65,9 +65,8 @@ class Hub(BaseApp):
     @staticmethod
     def guard_heartbeat(machine):
         try:
-            debug('[HUB] - [Receive Guard Heartbeat] - %s' % machine.id)
+            debug('[HUB] - [Receive] - Guard Heartbeat] : %s' % machine.id)
             update_machine(machine)
-            Hub.analyze_demand()
             return pop_order(machine.id)
         except Exception as e:
             traceback.print_exc();
@@ -78,7 +77,7 @@ class Hub(BaseApp):
     def analyze_demand():
         if not DEMAND:
             return
-        debug("[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND))
+        debug("[Hub] - [Start] - [Analyze Demand] : %s. PID %s" % (json.dumps(DEMAND), get_pid()))
         success_queues = []
         for queue, worker_cnt in DEMAND.iteritems():
             if Hub.load_balancing(queue, worker_cnt):
@@ -88,7 +87,7 @@ class Hub(BaseApp):
 
     @staticmethod
     def report_demand(type, queue, result):
-        debug('[Hub] - [Deman] - %s : %s' % (queue, result))
+        debug('[Hub] - [Receive] - [Demand] - %s : %s' % (queue, result))
         instruction = Instruction.create(type, WorkerInstruction.generate_instruction_cmd(queue, result))
         current_worker_cnt = get_worker_cnt(instruction.queue)
         new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
@@ -96,18 +95,18 @@ class Hub(BaseApp):
 
     @staticmethod
     def guard_register(machine):
-        info('[Guard] - [Register] - %s' % machine.id)
+        info('[Guard] - [Receive] - [Machine Register] : %s' % machine.id)
         update_machine(machine)
 
     @staticmethod
     def load_balancing(queue, worker_cnt):
         healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
         if not healthy_machines:
-            warn('[Hub] - [Warning] - No Healthy Machines!')
+            warn('[Hub] - [Warning] : No Healthy Machines!')
             return False
         worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
         for machine in healthy_machines:
-            info('[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
+            info('[Hub] - [Start] - [Load Balance] : {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
             add_plan(queue, machine.id, worker_per_machine)
         return True
 

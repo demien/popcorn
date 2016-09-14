@@ -102,13 +102,16 @@ class Planner(object):
     def restart(self):
         self.start(restart=True)
 
-    def __str__(self):
-        return '<Planner %s:%s> (Alive:%s)' % (self.strategy_name, self.queue, self.alive)
+    # def __str__(self):
+    #     return '<Planner %s:%s> (Alive:%s)' % (self.strategy_name, self.queue, self.alive)
+
+    def __repr__(self):
+        return 'Queue: %s Strategy: %s' % (self.strategy_name, self.queue)
 
     def plan(self):
         status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
         while True:
-            debug('[Planner] - [HeartBeat] - %s , Thread %s. PID: %s', self, threading.current_thread(), get_pid())
+            debug('[Planner] - [Start] - [HeartBeat] : %s. PID: %s', self, get_pid())
             previous_timestamp = int(round(time.time() * TIME_SCALE))
             previous_status = status
             time.sleep(HEARTBEAT_INTERVAL)
