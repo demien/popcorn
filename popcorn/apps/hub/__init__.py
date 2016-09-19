@@ -30,11 +30,11 @@ class Hub(BaseApp):
         self.LOOP_INTERVAL = 10  # second
 
     def demand_analyse_loop(self, condition=lambda: True):
-        debug('[Hub] - [Start] - [Demand analyse loop] : PID %s' % get_pid())
+        
         while not self.__shutdown_demand_analyse.isSet() and condition:
             Hub.analyze_demand()
             time.sleep(self.LOOP_INTERVAL)
-        debug('[Hub] - [Exit] - [Demand analyse loop]')
+        
 
     def start(self, condition=lambda: True):
         """
@@ -65,9 +65,11 @@ class Hub(BaseApp):
         2. Send order to guard (to do)
         3. Check healthy for guard & planner (to do)
         """
+        debug('[Hub] - [Start] - [Loop] : PID %s' % get_pid())
         while not self.__shutdown_hub.isSet() and condition:
             Hub.analyze_demand()
             time.sleep(self.LOOP_INTERVAL)
+        debug('[Hub] - [Exit] - [Loop]')
 
 
     @staticmethod
