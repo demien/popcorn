@@ -19,6 +19,7 @@ class Guard(BaseApp):
         self.rpc_client = PyroClient(self.app.conf['HUB_IP'])
         self.pool = Pool(self.app)
         self.machine = Machine(healthy_mock=app.conf['HEALTHY_MOCK'])
+        self.LOOP_INTERVAL = 10  # second
 
     def start(self):
         """
@@ -54,7 +55,7 @@ class Guard(BaseApp):
                 import traceback
                 traceback.print_exc()
             finally:
-                time.sleep(5)
+                time.sleep(self.LOOP_INTERVAL)
 
     def heartbeat(self, rpc_client):
         snapshot = self.machine.snapshot()
@@ -64,7 +65,6 @@ class Guard(BaseApp):
     def follow_order(self, order):
         for instruction in order.instructions:
             pool_name = self.pool.get_or_create_pool_name(instruction.queue)
-            
             if instruction.operator == Operator.INC:
                 self.pool.grow(pool_name, instruction.worker_cnt)
             elif instruction.operator == Operator.DEC:
