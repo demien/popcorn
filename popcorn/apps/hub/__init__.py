@@ -26,15 +26,7 @@ class Hub(BaseApp):
 
         self.rpc_server = PyroServer()  # fix me, load it dynamiclly
         self.__shutdown_hub = threading.Event()
-        self.__shutdown_demand_analyse = threading.Event()
         self.LOOP_INTERVAL = 10  # second
-
-    def demand_analyse_loop(self, condition=lambda: True):
-        
-        while not self.__shutdown_demand_analyse.isSet() and condition:
-            Hub.analyze_demand()
-            time.sleep(self.LOOP_INTERVAL)
-        
 
     def start(self, condition=lambda: True):
         """
@@ -44,7 +36,6 @@ class Hub(BaseApp):
         Step 3. Start loop
         """
         self.__shutdown_hub.clear()
-        self.__shutdown_demand_analyse.clear()
 
         self._start_rpc_server()
         self._start_default_planners()
@@ -67,7 +58,7 @@ class Hub(BaseApp):
         """
         debug('[Hub] - [Start] - [Loop] : PID %s' % get_pid())
         while not self.__shutdown_hub.isSet() and condition:
-            Hub.analyze_demand()
+            self.analyze_demand()
             time.sleep(self.LOOP_INTERVAL)
         debug('[Hub] - [Exit] - [Loop]')
 
@@ -83,8 +74,7 @@ class Hub(BaseApp):
             print e
             return None
 
-    @staticmethod
-    def analyze_demand():
+    def analyze_demand(self):
         if not DEMAND:
             return
         debug("[Hub] - [Start] - [Analyze Demand] : %s. PID %s" % (json.dumps(DEMAND), get_pid()))

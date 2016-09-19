@@ -5,7 +5,7 @@ import threading
 from celery import bootsteps
 from popcorn.rpc import DISPATHCER_SERVER_OBJ_ID, PORT
 from popcorn.rpc.base import BaseRPCServer, BaseRPCClient, RPCDispatcher
-from popcorn.utils import get_log_obj
+from popcorn.utils import get_log_obj, get_pid
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
@@ -52,7 +52,7 @@ class PyroServer(BaseRPCServer, PyroBase):
         while not thread.is_alive():
             continue
         self.thread = thread
-        info('[RPC Server] - [Start] - %s' % uri)
+        info('[RPC Server] - [Start] - %s.' % uri)
 
     def stop(self):
         """
