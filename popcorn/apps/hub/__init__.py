@@ -23,16 +23,17 @@ class Hub(BaseApp):
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         super(Hub, self).init(**kwargs)
+
         self.rpc_server = PyroServer()  # fix me, load it dynamiclly
         self.__shutdown_hub = threading.Event()
         self.__shutdown_demand_analyse = threading.Event()
-        self.DEMAND_ANALYSE_INTERVAL = 10  # second
+        self.LOOP_INTERVAL = 10  # second
 
     def demand_analyse_loop(self, condition=lambda: True):
         debug('[Hub] - [Start] - [Demand analyse loop] : PID %s' % get_pid())
         while not self.__shutdown_demand_analyse.isSet() and condition:
             Hub.analyze_demand()
-            time.sleep(self.DEMAND_ANALYSE_INTERVAL)
+            time.sleep(self.LOOP_INTERVAL)
         debug('[Hub] - [Exit] - [Demand analyse loop]')
 
     def start(self, condition=lambda: True):
@@ -40,24 +41,34 @@ class Hub(BaseApp):
         Start the hub.
         Step 1. Start rpc server
         Step 2. Start default planners thread
-        Step 3. Start demand analyse loop thread
-        Step 4. loop
+        Step 3. Start loop
         """
         self.__shutdown_hub.clear()
         self.__shutdown_demand_analyse.clear()
 
+        self._start_rpc_server()
+        self._start_default_planners()
+        self._start_loop(condition)
+
+    def _start_rpc_server(self):
         self.rpc_server.start()
 
+    def _start_default_planners(self):
         from popcorn.apps.planner import schedule_planner
         for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
             schedule_planner(self.app, queue, strategy)
 
-        thread = threading.Thread(target=self.demand_analyse_loop)
-        thread.daemon = True
-        thread.start()
-
+    def _start_loop(self, condition):
+        """
+        Things to do:
+        1. Anaylize demand
+        2. Send order to guard (to do)
+        3. Check healthy for guard & planner (to do)
+        """
         while not self.__shutdown_hub.isSet() and condition:
-            continue
+            Hub.analyze_demand()
+            time.sleep(self.LOOP_INTERVAL)
+
 
     @staticmethod
     def guard_heartbeat(machine):
