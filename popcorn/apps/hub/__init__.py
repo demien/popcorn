@@ -62,28 +62,27 @@ class Hub(BaseApp):
             time.sleep(self.LOOP_INTERVAL)
         debug('[Hub] - [Exit] - [Loop]')
 
-
-    @staticmethod
-    def guard_heartbeat(machine):
-        try:
-            debug('[HUB] - [Receive] - Guard Heartbeat] : %s' % machine.id)
-            update_machine(machine)
-            return pop_order(machine.id)
-        except Exception as e:
-            traceback.print_exc();
-            print e
-            return None
-
     def analyze_demand(self):
         if not DEMAND:
             return
         debug("[Hub] - [Start] - [Analyze Demand] : %s. PID %s" % (json.dumps(DEMAND), get_pid()))
         success_queues = []
         for queue, worker_cnt in DEMAND.iteritems():
-            if Hub.load_balancing(queue, worker_cnt):
+            if self.load_balancing(queue, worker_cnt):
                 success_queues.append(queue)
         for queue in success_queues:
             remove_demand(queue)
+
+    def load_balancing(self, queue, worker_cnt):
+        healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
+        if not healthy_machines:
+            warn('[Hub] - [Warning] : No Healthy Machines!')
+            return False
+        worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
+        for machine in healthy_machines:
+            info('[Hub] - [Start] - [Load Balance] : {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
+            add_plan(queue, machine.id, worker_per_machine)
+        return True
 
     @staticmethod
     def report_demand(type, queue, result):
@@ -99,16 +98,15 @@ class Hub(BaseApp):
         update_machine(machine)
 
     @staticmethod
-    def load_balancing(queue, worker_cnt):
-        healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
-        if not healthy_machines:
-            warn('[Hub] - [Warning] : No Healthy Machines!')
-            return False
-        worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
-        for machine in healthy_machines:
-            info('[Hub] - [Start] - [Load Balance] : {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
-            add_plan(queue, machine.id, worker_per_machine)
-        return True
+    def guard_heartbeat(machine):
+        try:
+            debug('[HUB] - [Receive] - Guard Heartbeat] : %s' % machine.id)
+            update_machine(machine)
+            return pop_order(machine.id)
+        except Exception as e:
+            traceback.print_exc();
+            print e
+            return None
 
     @staticmethod
     def scan(target):
