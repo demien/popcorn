@@ -1,17 +1,18 @@
-from popcorn.rpc.pyro import PyroServer
 import json
 import math
 import traceback
 import threading
 import time
 import os
-from celery import bootsteps
-
 import state
+
+from collections import defaultdict
+from celery import bootsteps
 from popcorn.apps.base import BaseApp
-from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction
-from popcorn.rpc.pyro import RPCServer as _RPCServer
+from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
+from popcorn.rpc.pyro import PyroServer, PyroClient
 from popcorn.utils import get_log_obj, get_pid
+from popcorn.apps.hub.order import Order
 from state import (
     DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
 
@@ -27,6 +28,7 @@ class Hub(BaseApp):
         self.rpc_server = PyroServer()  # fix me, load it dynamiclly
         self.__shutdown_hub = threading.Event()
         self.LOOP_INTERVAL = 10  # second
+        self.guard_client = defaultdict(lambda: None)
 
     def start(self, condition=lambda: True):
         """
@@ -40,6 +42,11 @@ class Hub(BaseApp):
         self._start_rpc_server()
         self._start_default_planners()
         self._start_loop(condition)
+
+    def get_guard_client(self, ip):
+        if self.guard_client[ip] is None:
+            self.guard_client[ip] = PyroClient(ip)
+        return self.guard_client[ip]
 
     def _start_rpc_server(self):
         self.rpc_server.start()
@@ -59,8 +66,22 @@ class Hub(BaseApp):
         debug('[Hub] - [Start] - [Loop] : PID %s' % get_pid())
         while not self.__shutdown_hub.isSet() and condition:
             self.analyze_demand()
+            self.send_order_to_guard()
             time.sleep(self.LOOP_INTERVAL)
         debug('[Hub] - [Exit] - [Loop]')
+
+    def send_order_to_guard(self):
+        machine_order = defaultdict(lambda: Order())
+        # construct order
+        for queue, plan in PLAN.iteritems():
+            for machine_id in plan.keys():
+                worker_cnt = PLAN[queue].pop(machine_id)
+                instruction_cmd = WorkerInstruction.generate_instruction_cmd(queue, worker_cnt)
+                machine_order[machine_id].add_instruction(InstructionType.WORKER, instruction_cmd)
+        # send order
+        for machine_id, order in machine_order.iteritems():
+            self.get_guard_client(machine_id).call('popcorn.apps.guard:Guard.receive_order', order)
+
 
     def analyze_demand(self):
         if not DEMAND:
@@ -102,11 +123,9 @@ class Hub(BaseApp):
         try:
             debug('[HUB] - [Receive] - Guard Heartbeat] : %s' % machine.id)
             update_machine(machine)
-            return pop_order(machine.id)
         except Exception as e:
             traceback.print_exc();
             print e
-            return None
 
     @staticmethod
     def scan(target):
