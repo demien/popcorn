@@ -9,6 +9,7 @@ from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order.instruction import Operator
 from popcorn.rpc.pyro import RPCClient
 from popcorn.utils.log import get_log_obj
+from popcorn.rpc.pyro import PyroClient
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
@@ -16,36 +17,34 @@ debug, info, warn, error, critical = get_log_obj(__name__)
 
 class Guard(BaseApp):
 
-    class Blueprint(bootsteps.Blueprint):
-        """Hub bootstep blueprint."""
-        name = 'Guard'
-        default_steps = set([
-            'popcorn.rpc.pyro:RPCClient',
-            'popcorn.apps.guard:Register',
-            'popcorn.apps.guard:Loop',
-        ])
-
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         super(Guard, self).init(**kwargs)
-        self.steps = []
-        self.processes = defaultdict(list)
+
+        self.rpc_client = PyroClient(self.app.conf['HUB_IP'])
         self.pool = Pool(self.app)
         self.machine = Machine(healthy_mock=app.conf['HEALTHY_MOCK'])
-        self.blueprint = self.Blueprint(app=self.app)
-        self.blueprint.apply(self)
 
     @property
     def id(self):
         return self.machine.id
 
     def start(self):
-        self.blueprint.start(self)
+        """
+        Start the guard.
+        Step 1. Register to rpc server
+        Step 2. Start loop
+        """
+        self._register_to_rpc_server()
+        self._start_loop()
 
-    def loop(self, rpc_client):
+    def _register_to_rpc_server(self):
+        self.rpc_client.call('popcorn.apps.hub:Hub.guard_register', machine=self.machine)
+
+    def _start_loop(self):
         while True:
             try:
-                order = self.heartbeat(rpc_client)
+                order = self.heartbeat(self.rpc_client)
                 if order:
                     debug('[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions]))
                     self.follow_order(order)
@@ -68,49 +67,3 @@ class Guard(BaseApp):
                 self.pool.grow(pool_name, instruction.worker_cnt)
             elif instruction.operator == Operator.DEC:
                 self.pool.shrink(pool_name, instruction.worker_cnt)
-
-
-class Register(bootsteps.StartStopStep):
-    requires = (RPCClient,)
-
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        p.rpc_client.call('popcorn.apps.hub:Hub.guard_register', machine=p.machine)
-        return self
-
-    def start(self, p):
-        pass
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
-
-
-class Loop(bootsteps.StartStopStep):
-    requires = (Register,)
-
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        return self
-
-    def start(self, p):
-        p.loop(p.rpc_client)
-        pass
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
