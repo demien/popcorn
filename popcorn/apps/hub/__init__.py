@@ -52,9 +52,9 @@ class Hub(BaseApp):
         self.rpc_server.start()
 
     def _start_default_planners(self):
-        from popcorn.apps.planner import schedule_planner
+        from popcorn.apps.planner import start_planner
         for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            schedule_planner(self.app, queue, strategy)
+            start_planner(self.app, queue, strategy)
 
     def _start_loop(self, condition):
         """

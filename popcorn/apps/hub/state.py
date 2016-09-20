@@ -1,8 +1,8 @@
 from collections import defaultdict
-
 from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import WorkerInstruction, InstructionType
 from popcorn.utils.log import get_log_obj
+
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 
@@ -51,3 +51,9 @@ MACHINES = defaultdict(lambda: None)
 
 def update_machine(machine):
     MACHINES[machine.id] = machine
+
+
+#: All the planner. It's a dict. Key is queue name.
+PLANNERS = defaultdict(lambda: None)
+
+
