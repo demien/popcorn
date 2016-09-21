@@ -69,7 +69,3 @@ class Guard(BaseApp):
                 self.pool.grow(pool_name, instruction.worker_cnt)
             elif instruction.operator == Operator.DEC:
                 self.pool.shrink(pool_name, instruction.worker_cnt)
-
-    @staticmethod
-    def receive_order(order):
-        add_order(order)

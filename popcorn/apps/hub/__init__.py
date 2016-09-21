@@ -78,7 +78,7 @@ class Hub(BaseApp):
                 machine_order[machine_id].add_instruction(InstructionType.WORKER, instruction_cmd)
         # send order
         for machine_id, order in machine_order.iteritems():
-            self.get_guard_client(machine_id).call('popcorn.apps.guard:Guard.receive_order', order)
+            self.get_guard_client(machine_id).call('popcorn.apps.guard.commands.receive_order', order)
 
 
     def analyze_demand(self):
