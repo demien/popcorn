@@ -4,17 +4,15 @@ import traceback
 import threading
 import time
 import os
-import state
-
 from collections import defaultdict
 from celery import bootsteps
 from popcorn.apps.base import BaseApp
+from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
 from popcorn.rpc.pyro import PyroServer, PyroClient
 from popcorn.utils import get_log_obj, get_pid
-from popcorn.apps.hub.order import Order
-from state import (
-    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
+from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt
+
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 
@@ -52,7 +50,7 @@ class Hub(BaseApp):
         self.rpc_server.start()
 
     def _start_default_planners(self):
-        from popcorn.apps.planner import start_planner
+        from popcorn.apps.planner.commands import start_planner
         for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
             start_planner(self.app, queue, strategy)
 
@@ -112,26 +110,3 @@ class Hub(BaseApp):
         current_worker_cnt = get_worker_cnt(instruction.queue)
         new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
         add_demand(instruction.queue, new_worker_cnt)
-
-    @staticmethod
-    def guard_register(machine):
-        info('[Guard] - [Receive] - [Machine Register] : %s' % machine.id)
-        update_machine(machine)
-
-    @staticmethod
-    def guard_heartbeat(machine):
-        try:
-            debug('[HUB] - [Receive] - Guard Heartbeat] : %s' % machine.id)
-            update_machine(machine)
-        except Exception as e:
-            traceback.print_exc();
-            print e
-
-    @staticmethod
-    def scan(target):
-        from popcorn.apps.scan import ScanTarget
-        from popcorn.apps.planner import Planner
-        if target == ScanTarget.MACHINE:
-            return dict(MACHINES)
-        if target == ScanTarget.PLANNER:
-            return Planner.stats()

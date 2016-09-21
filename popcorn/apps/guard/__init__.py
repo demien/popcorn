@@ -36,7 +36,7 @@ class Guard(BaseApp):
         PyroServer().start()
 
     def _register_to_hub(self):
-        self.rpc_client.call('popcorn.apps.hub:Hub.guard_register', machine=self.machine)
+        self.rpc_client.call('popcorn.apps.hub.commands.register_machine', machine=self.machine)
 
     def _start_loop(self):
         """
@@ -60,7 +60,7 @@ class Guard(BaseApp):
     def heartbeat(self, rpc_client):
         snapshot = self.machine.snapshot()
         debug('[Guard] - [Send] - [HeartBeat]')
-        rpc_client.call('popcorn.apps.hub:Hub.guard_heartbeat', machine=self.machine)
+        rpc_client.call('popcorn.apps.hub.commands.update_machine', machine=self.machine)
 
     def follow_order(self, order):
         for instruction in order.instructions:

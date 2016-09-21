@@ -12,8 +12,6 @@ from popcorn.utils import get_log_obj, get_pid, start_daemon_thread, terminate_t
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
-
-
 STRATEGY_MAP = {
     SimpleStrategy.name: 'popcorn.apps.planner.strategy.simple:SimpleStrategy'
 }
@@ -26,7 +24,7 @@ class RegisterPlanner(BaseApp):
         self.rpc_client = PyroClient(self.app.conf['HUB_IP'])
 
     def start(self):
-        self.rpc_client.call('popcorn.apps.planner:start_planner',
+        self.rpc_client.call('popcorn.apps.planner.commands:start_planner',
                               app=self.app,
                               queue=self.queue,
                               strategy_name=self.strategy_name)
@@ -120,19 +118,3 @@ class Planner(object):
         while condition and time.time() < timeout_start + seconds:
             continue
         return condition
-
-def start_planner(app, queue, strategy_name):
-    info('[Planner] - [Register] - Queue: %s, Strategy: %s' % (queue, strategy_name))
-    planner = PlannerPool.get_or_create_planner(app, queue, strategy_name)
-    if planner.alive:
-        planner.load_strategy(strategy_name)
-    else:
-        planner.start()
-
-def stop_planner(queue):
-    info('[Planner] - [Stop] - Queue: %s' % queue)
-    planner = PlannerPool.get(queue)
-    if planner is None:
-        debug('[Planner] - [Not Found] - Queue: %s' % queue)
-    else:
-        planner.stop()
