@@ -1,6 +1,14 @@
+import logging
+
+LOGLEVEL = None
+
 class BaseApp(object):
 
-    def setup_instance(self, **kwargs):
+    def init(self, **kwargs):
+        self.setup_defaults(**kwargs)
+        self.init_log()
+
+    def init_log(self, **kwargs):
         self.no_color = None
         self.on_init_blueprint(**kwargs)
 

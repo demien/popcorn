@@ -68,3 +68,4 @@ popcorn.egg-info/
 dump.rdb
 
 *.rdb
+pyro.log

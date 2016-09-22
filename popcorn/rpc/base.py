@@ -1,9 +1,9 @@
 import abc
-from celery.utils.imports import instantiate
+import Pyro4
+from popcorn.utils import call_callable
 
 
 class BaseRPCServer(object):
-
     __metaclass__ = abc.ABCMeta
 
     def start(self):
@@ -11,19 +11,13 @@ class BaseRPCServer(object):
 
 
 class BaseRPCClient(object):
-
     __metaclass__ = abc.ABCMeta
 
-    def start(self, func_path):
+    def call(self, func_path):
         raise NotImplementedError()
 
-
+@Pyro4.expose
 class RPCDispatcher(object):
 
     def dispatch(self, func_path, *args, **kwargs):
-        # print("[RPC Client] Send request %s" % func_path)
-        instantiate(func_path, **kwargs)
-
-    def dispatch_with_return(self, func_path, *args, **kwargs):
-        # print("[RPC Client] Send request %s" % func_path)
-        return instantiate(func_path, **kwargs)
+        return call_callable(func_path, *args, **kwargs)

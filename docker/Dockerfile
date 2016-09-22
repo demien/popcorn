@@ -2,7 +2,7 @@ FROM python:2.7
 MAINTAINER Demien "demien@appannie.com"
 
 # Pip package
-RUN pip install psutil Pyro4==4.45 kombu ipdb billiard pytz redis vine
+RUN pip install psutil Pyro4==4.47 kombu ipdb billiard pytz redis vine
 
 # Install Redis
 RUN apt-get update && \

@@ -1,116 +1,107 @@
-import ctypes
 import threading
 import time
-from celery.utils.imports import instantiate
-
+from collections import defaultdict
 from popcorn.apps.base import BaseApp
 from popcorn.apps.constants import TIME_SCALE
 from popcorn.apps.hub import Hub
 from popcorn.apps.hub.order.instruction import InstructionType
+from popcorn.apps.planner.strategy import SimpleStrategy
 from popcorn.apps.utils.broker_util import taste_soup
-from popcorn.rpc.pyro import RPCClient
-from popcorn.utils.log import get_log_obj
+from popcorn.rpc.pyro import PyroClient
+from popcorn.utils import get_log_obj, get_pid, start_daemon_thread, terminate_thread, call_callable
+
 
 debug, info, warn, error, critical = get_log_obj(__name__)
-HEARTBEAT_INTERVAL = 5
-
 STRATEGY_MAP = {
-    'simple': 'popcorn.apps.planner.strategy.simple:SimpleStrategy'
+    SimpleStrategy.name: 'popcorn.apps.planner.strategy.simple:SimpleStrategy'
 }
-
-
-def start_back_ground_task(target, args=()):
-    debug('[BG] Tast New Thread %r', target)
-    thread = threading.Thread(target=target, args=args)
-    thread.daemon = True
-    thread.start()
-    return thread
-
-
-def terminate_thread(thread):
-    """Terminates a python thread from another thread.
-
-    :param thread: a threading.Thread instance
-    """
-    if not thread.isAlive():
-        return
-
-    exc = ctypes.py_object(SystemExit)
-    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-        ctypes.c_long(thread.ident), exc)
-    if res == 0:
-        raise ValueError("nonexistent thread id")
-    elif res > 1:
-        # """if it returns a number greater than one, you're in trouble,
-        # and you should call it again with exc=NULL to revert the effect"""
-        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, None)
-        raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
 class RegisterPlanner(BaseApp):
     def __init__(self, app, **kwargs):
         self.app = app or self.app
-        self.steps = []
-        self.setup_defaults(**kwargs)
-        self.setup_instance(**kwargs)
-        RPCClient(None).create(self)  # this operation will bind rpc_client on self
+        super(RegisterPlanner, self).init(**kwargs)
+        self.rpc_client = PyroClient(self.app.conf['HUB_IP'])
 
     def start(self):
-        self.rpc_client.start('popcorn.apps.planner:schedule_planner',
+        self.rpc_client.call('popcorn.apps.planner.commands:start_planner',
                               app=self.app,
                               queue=self.queue,
                               strategy_name=self.strategy_name)
 
     def setup_defaults(self, loglevel=None, logfile=None, queue=None, strategy=None, **_kw):
+        super(RegisterPlanner, self).setup_defaults(loglevel=None, logfile=None, queue=None, strategy=None, **_kw)
         self.queue = self._getopt('queue', queue)
         self.strategy_name = self._getopt('strategy', strategy)
-        self.loglevel = self._getopt('log_level', loglevel)
-        self.logfile = self._getopt('log_file', logfile)
 
 
-class Planner(object):
-    instances = {}  # key queue name , value : instance
+class PlannerPool(object):
+    pool = defaultdict(lambda: None)
 
     @classmethod
-    def get_instance(cls, app, queue, strategy_name):
-        ins = cls.instances.get(queue)
-        if not ins:
-            ins = Planner(app, queue, strategy_name)
-            cls.instances[queue] = ins
-        return ins
+    def get_or_create_planner(cls, app, queue, strategy_name):
+        planner = cls.pool.get(queue)
+        if planner is None:
+            planner = Planner(app, queue, strategy_name)
+            cls.pool[queue] = planner
+        return planner
 
     @classmethod
     def stats(cls):
-        return {q: str(v) for q, v in cls.instances.items()}
+        return {q: str(v) for q, v in cls.pool.items()}
+
+
+class Planner(object):
 
     def __init__(self, app, queue, strategy_name):
         self.app = app or self.app
-        self.steps = []
         self.queue = queue
-        self.strategy_name = strategy_name
-        strategy_cls = STRATEGY_MAP[strategy_name]
-        self.strategy = instantiate(strategy_cls)
-        self.continue_flag = True
-        info('[Planner] - [Register] - Queue: %s, Strategy: %s' % (self.queue, self.strategy_name))
         self.thread = None
+        self.load_strategy(strategy_name)
+        self.__shutdown = threading.Event()
+
+    def __repr__(self):
+        return 'Queue: %s Strategy: %s' % (self.queue, self.strategy.name)
 
     @property
     def alive(self):
-        return self.thread is not None
+        return self.thread is not None and self.thread.is_alive()
 
-    def restart(self):
-        self.start(restart=True)
+    def start(self):
+        if self.alive:
+            debug('[Planner] - [Already Start] - %s' % self)
+        else:
+            self.__shutdown.clear()
+            self.thread = start_daemon_thread(self.loop)
+            while not self.thread.is_alive():
+                continue
+            debug('[Planner] - [Start] - %s' % (self))
 
-    def __str__(self):
-        return '<Planner %s:%s>(Alive:%s)' % (self.strategy_name, self.queue, self.alive)
+    def stop(self):
+        if not self.alive:
+            return
+        self.__shutdown.set()
+        if self.wait_condition_till_timeout(self.alive, 10):
+            self.force_quit()
+        if self.wait_condition_till_timeout(self.alive, 10):
+            raise PlannerException('Could not stop planner %s' % self.queue)
+        debug('[Planner] - [Stop] - %s' % self)
 
-    def plan(self):
+    def force_quit(self):
+        start_daemon_thread(terminate_thread, args=(self.thread,))
+
+    def load_strategy(self, strategy_name):
+        debug('[Planner] - [Load Strategy] - %s' % strategy_name)
+        self.strategy = call_callable(STRATEGY_MAP[strategy_name])
+
+    def loop(self, condition=lambda: True):
+        LOOP_INTERVAL = 5
         status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
-        while True:
-            debug('[Planner] - [HeartBeat] - %s , Thread %s', self, threading.current_thread())
+        while condition and not self.__shutdown.isSet():
+            debug('[Planner] - [Send] - [HeartBeat] : %s. PID: %s', self, get_pid())
             previous_timestamp = int(round(time.time() * TIME_SCALE))
             previous_status = status
-            time.sleep(HEARTBEAT_INTERVAL)
+            time.sleep(LOOP_INTERVAL)
             status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             result = self.strategy.apply(
                 previous_status=previous_status,
@@ -118,46 +109,12 @@ class Planner(object):
                 status=status,
                 time=int(round(time.time() * TIME_SCALE))
             )
-            if self.continue_flag != True:
-                info('[Planner] - [Stop Scan] ...')
-                break
             if result:
                 Hub.report_demand(InstructionType.WORKER, self.queue, result)
+        info('[Planner] - [Stop] - %s' % self.queue)
 
-    def start(self, restart=True):
-        debug('[Planner] - [Start(restart=%s)] - %s' % (restart, self))
-        if self.thread:
-            if restart:
-                self.stop()
-                self.start(restart=False)
-            else:
-                raise Exception('thread already exist')
-        else:
-            self.continue_flag = True
-            self.thread = start_back_ground_task(self.plan)
-
-    def stop(self, blocking=True):
-        debug('[Planner] - [Stop] - %s' % self)
-        if self.thread is None:
-            return
-        else:
-            self.continue_flag = False
-            if blocking:
-                self.thread.join(timeout=10)
-                self.thread = None
-            else:
-                start_back_ground_task(self.force_quit, args=(self.thread,))
-
-    def force_quit(self, thread):
-        time.sleep(HEARTBEAT_INTERVAL * 2)
-        terminate_thread(thread)
-        self.thread = None
-
-
-def schedule_planner(app, queue, strategy_name):
-    debug('Schedule planner : queue %s:%s', queue, strategy_name)
-    planner = Planner.get_instance(app, queue, strategy_name)
-    if planner.alive:
-        planner.restart()
-    else:
-        planner.start()
+    def wait_condition_till_timeout(self, condition, seconds):
+        timeout_start = time.time()
+        while condition and time.time() < timeout_start + seconds:
+            continue
+        return condition

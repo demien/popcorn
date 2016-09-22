@@ -19,10 +19,17 @@ class Machine(object):
         self.id = self.get_id()
         self.healthy_mock = healthy_mock
 
+    @property
+    def ip(self):
+        return socket.gethostbyname(self.hostname)
+
+    @property
+    def hostname(self):
+        return socket.gethostname()
+
     def get_id(self):
-        name = socket.gethostname()
-        ip = socket.gethostbyname(name)
-        return '%s@%s' % (name, ip)
+        # return '%s@%s' % (self.hostname, self.ip)
+        return self.ip
 
     def is_healthy(self):
         if self.healthy_mock:
@@ -132,7 +139,7 @@ class Camera(object):
     def snapshot(self):
         snapshot = {
             'time': datetime.now(),
-            'healthy': self.machine.hardware.healthy,
+            'healthy': self.machine.is_healthy(),
             'hardware': self.machine.hardware.to_string(),
         }
         return snapshot

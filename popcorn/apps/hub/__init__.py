@@ -1,146 +1,112 @@
-import Pyro4
 import json
 import math
 import traceback
+import threading
+import time
+import os
+from collections import defaultdict
 from celery import bootsteps
-
-import state
 from popcorn.apps.base import BaseApp
-from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction
-from popcorn.rpc.pyro import RPCServer as _RPCServer
-from popcorn.utils.log import get_log_obj
-from state import (
-    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, update_machine, get_worker_cnt)
+from popcorn.apps.hub.order import Order
+from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
+from popcorn.rpc.pyro import PyroServer, PyroClient
+from popcorn.utils import get_log_obj, get_pid
+from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt
+
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 
 
 class Hub(BaseApp):
-    class Blueprint(bootsteps.Blueprint):
-        """Hub bootstep blueprint."""
-        name = 'Hub'
-        default_steps = set([
-            'popcorn.apps.hub:LoadPlanners',
-            'popcorn.apps.hub:RPCServer',  # fix me, dynamic load rpc portal
-        ])
 
     def __init__(self, app, **kwargs):
         self.app = app or self.app
-        self.steps = []
-        self.setup_defaults(**kwargs)
-        self.setup_instance(**kwargs)
+        super(Hub, self).init(**kwargs)
 
-        self.blueprint = self.Blueprint(app=self.app)
-        self.blueprint.apply(self, **kwargs)
+        self.rpc_server = PyroServer()  # fix me, load it dynamiclly
+        self.__shutdown_hub = threading.Event()
+        self.LOOP_INTERVAL = 10  # second
+        self.guard_client = defaultdict(lambda: None)
 
-    def start(self):
-        self.blueprint.start(self)
+    def start(self, condition=lambda: True):
+        """
+        Start the hub.
+        Step 1. Start rpc server
+        Step 2. Start default planners thread
+        Step 3. Start loop
+        """
+        self.__shutdown_hub.clear()
 
-    @staticmethod
-    def guard_heartbeat(machine):
-        try:
-            debug('[HUB] - [Receive Guard Heartbeat] - %s' % machine.id)
-            update_machine(machine)
-            Hub.analyze_demand()
-            return pop_order(machine.id)
-        except Exception as e:
-            traceback.print_exc();
-            print e
-            return None
+        self._start_rpc_server()
+        self._start_default_planners()
+        self._start_loop(condition)
 
-    @staticmethod
-    def analyze_demand():
+    def get_guard_client(self, ip):
+        if self.guard_client[ip] is None:
+            self.guard_client[ip] = PyroClient(ip)
+        return self.guard_client[ip]
+
+    def _start_rpc_server(self):
+        self.rpc_server.start()
+
+    def _start_default_planners(self):
+        from popcorn.apps.planner.commands import start_planner
+        for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
+            start_planner(self.app, queue, strategy)
+
+    def _start_loop(self, condition):
+        """
+        Things to do:
+        1. Anaylize demand
+        2. Send order to guard (to do)
+        3. Check healthy for guard & planner (to do)
+        """
+        debug('[Hub] - [Start] - [Loop] : PID %s' % get_pid())
+        while not self.__shutdown_hub.isSet() and condition:
+            self.analyze_demand()
+            self.send_order_to_guard()
+            time.sleep(self.LOOP_INTERVAL)
+        debug('[Hub] - [Exit] - [Loop]')
+
+    def send_order_to_guard(self):
+        machine_order = defaultdict(lambda: Order())
+        # construct order
+        for queue, plan in PLAN.iteritems():
+            for machine_id in plan.keys():
+                worker_cnt = PLAN[queue].pop(machine_id)
+                instruction_cmd = WorkerInstruction.generate_instruction_cmd(queue, worker_cnt)
+                machine_order[machine_id].add_instruction(InstructionType.WORKER, instruction_cmd)
+        # send order
+        for machine_id, order in machine_order.iteritems():
+            self.get_guard_client(machine_id).call('popcorn.apps.guard.commands.receive_order', order)
+
+
+    def analyze_demand(self):
         if not DEMAND:
             return
-        debug("[Hub: Guard Heartbeat] Analyze Demand: %s" % json.dumps(DEMAND))
+        debug("[Hub] - [Start] - [Analyze Demand] : %s. PID %s" % (json.dumps(DEMAND), get_pid()))
         success_queues = []
         for queue, worker_cnt in DEMAND.iteritems():
-            if Hub.load_balancing(queue, worker_cnt):
+            if self.load_balancing(queue, worker_cnt):
                 success_queues.append(queue)
         for queue in success_queues:
             remove_demand(queue)
 
-    @staticmethod
-    def report_demand(type, queue, result):
-        debug('[Hub] - [Deman] - %s : %s' % (queue, result))
-        instruction = Instruction.create(type, WorkerInstruction.generate_instruction_cmd(queue, result))
-        current_worker_cnt = get_worker_cnt(instruction.queue)
-        new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
-        add_demand(instruction.queue, new_worker_cnt)
-
-    @staticmethod
-    def guard_register(machine):
-        info('[Guard] - [Register] - %s' % machine.id)
-        update_machine(machine)
-
-    @staticmethod
-    def load_balancing(queue, worker_cnt):
+    def load_balancing(self, queue, worker_cnt):
         healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
         if not healthy_machines:
-            warn('[Hub] - [Warning] - No Healthy Machines!')
+            warn('[Hub] - [Warning] : No Healthy Machines!')
             return False
         worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
         for machine in healthy_machines:
-            info('[Hub] - [Load Balance] - {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
+            info('[Hub] - [Start] - [Load Balance] : {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
             add_plan(queue, machine.id, worker_per_machine)
         return True
 
     @staticmethod
-    def scan(target):
-        from popcorn.apps.scan import ScanTarget
-        from popcorn.apps.planner import Planner
-        if target == ScanTarget.MACHINE:
-            return dict(MACHINES)
-        if target == ScanTarget.PLANNER:
-            return Planner.stats()
-
-
-class LoadPlanners(bootsteps.StartStopStep):
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        return self
-
-    def start(self, p):
-        from popcorn.apps.planner import schedule_planner
-        for queue, strategy in p.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            schedule_planner(p.app, queue, strategy)
-
-    def stop(self, p):
-        print 'in stop'
-
-    def terminate(self, p):
-        print 'in terminate'
-
-
-class RPCServer(_RPCServer):
-    requires = (LoadPlanners,)
-
-
-@Pyro4.expose
-def hub_guard_heartbeat(machine):
-    """
-    :param id:
-    :param stats: dict contains memory & cpu use
-    :return:
-    """
-    return Hub.guard_heartbeat(machine)
-
-
-@Pyro4.expose
-def hub_report_demand(type, cmd):
-    return Hub.report_demand(type, cmd)
-
-
-@Pyro4.expose
-def hub_guard_register(machine):
-    return Hub.guard_register(machine)
-
-
-@Pyro4.expose
-def hub_scan(target):
-    return Hub.scan(target)
+    def report_demand(type, queue, result):
+        debug('[Hub] - [Receive] - [Demand] - %s : %s' % (queue, result))
+        instruction = Instruction.create(type, WorkerInstruction.generate_instruction_cmd(queue, result))
+        current_worker_cnt = get_worker_cnt(instruction.queue)
+        new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
+        add_demand(instruction.queue, new_worker_cnt)

@@ -1,51 +1,114 @@
+import copy
 import Pyro4
 import socket
+import threading
 from celery import bootsteps
-from popcorn.rpc import DISPATHCER_SERVER_NAME, PORT, get_uri
+from popcorn.rpc import DISPATHCER_SERVER_OBJ_ID, PORT
 from popcorn.rpc.base import BaseRPCServer, BaseRPCClient, RPCDispatcher
-from popcorn.utils.log import get_log_obj
+from popcorn.utils import get_log_obj, get_pid
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
+__all__ = ['PyroServer', 'PyroClient']
+
+DEFAULT_SERIALIZER = 'pickle'
+DEFAULT_SERVERTYPE = 'multiplex'
 
 
-class PyroServer(BaseRPCServer):
+class PyroBase(object):
 
     def __init__(self, **kwargs):
-        ip = self.get_ip()
-        port = PORT
-        Pyro4.config.SERIALIZER = 'pickle'
-        self.daemon = Pyro4.Daemon(host=ip, port=port)  # make a Pyro daemon
+        Pyro4.config.SERVERTYPE = DEFAULT_SERVERTYPE
+        Pyro4.config.SERIALIZER = DEFAULT_SERIALIZER
 
-    def _register(self):
-        return self.daemon.register(RPCDispatcher, DISPATHCER_SERVER_NAME)   # register the greeting maker as a Pyro object
-        # print '[RPC Server] Register Uri %s' % uri
+    @property
+    def port(self):
+        return PORT
 
-    def start(self):
-        uri = self._register()
-        info('[RPC Server] - [Start] - %s' % uri)
-        self.daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
-    def get_ip(self):
+class PyroServer(BaseRPCServer, PyroBase):
+
+    def __init__(self, **kwargs):
+        PyroBase.__init__(self)
+        self.daemon = Pyro4.Daemon(host=self.ip, port=self.port)  # init a Pyro daemon
+        self.thread = None
+
+    @property
+    def ip(self):
         host = socket.gethostname()
         return socket.gethostbyname(host)
 
+    def start(self):
+        """
+        Start a pyro server
 
-class PyroClient(BaseRPCClient):
+        Fire a new thread for the server daemon loop.
+        This mehtod is blocking till the server daemon loop is ready.
+        """
+        uri = self.register(RPCDispatcher, DISPATHCER_SERVER_OBJ_ID)
+        thread = threading.Thread(target=self.daemon.requestLoop)
+        thread.daemon = True
+        thread.start()
+        while not thread.is_alive():
+            continue
+        self.thread = thread
+        info('[RPC Server] - [Start] - %s.' % uri)
 
-    def __init__(self, server, ip, port):
-        uri = get_uri(server, ip, port)
-        # print '[RPC Client] connection server %s' % uri
-        self.rpc_client = Pyro4.Proxy(uri)    # use name server object lookup uri shortcut
+    def stop(self):
+        """
+        Stop the pyro server
 
-    def start(self, func_path, *args, **kwargs):
-        Pyro4.config.SERIALIZER = 'pickle'
-        self.rpc_client.dispatch(func_path, *args, **kwargs)
+        Notice. the step order is quite important and can not change.
+        Step 1: stop the daemon loop
+        Step 2: stop the socket server
+        Step 3: unregister the dispather class
+        """
+        self.daemon.shutdown()
+        if self.thread is not None and self.thread.is_alive():
+            while self.thread.is_alive():
+                continue
+        self.daemon.close()
+        self.unregister(RPCDispatcher)
+        info('[RPC Server] - [Shutdown] - exit daemon loop')
 
-    def start_with_return(self, func_path, *args, **kwargs):
-        Pyro4.config.SERIALIZER = 'pickle'
-        return self.rpc_client.dispatch_with_return(func_path, *args, **kwargs)
+    def register(self, obj, obj_id=None):
+        """
+        Register the obj to the server.
+        """
+        return self.daemon.register(obj, obj_id)  # register a obj with obj id
 
+    def unregister(self, obj):
+        """
+        Unregister the obj from the server.
+        Ignore if unregister an unexist obj.
+        """
+        try:
+            return self.daemon.unregister(obj)
+        except Exception as e:
+            pass  # don't care for multi unregister
+
+
+class PyroClient(BaseRPCClient, PyroBase):
+
+    def __init__(self, server_ip):
+        PyroBase.__init__(self)
+        dispatcher_uri = self.get_uri(DISPATHCER_SERVER_OBJ_ID, server_ip, self.port)
+        self.default_proxy = self.get_proxy_obj(dispatcher_uri)  # get local proxy obj
+
+    def call(self, path, *args, **kwargs):
+        """
+        Call a remote obj or class.
+
+        :param str path: the path of the callable obj. A valid one: popcorn.apps.hub:Hub.scan.
+         More detail of path please check popcorn.utils.imports.symbol_by_name
+        """
+        return self.default_proxy.dispatch(path, *args, **kwargs)
+
+    def get_proxy_obj(self, uri):
+        return Pyro4.Proxy(uri)
+
+    def get_uri(self, obj_id, server_ip, port):
+        return 'PYRO:%s@%s:%s' % (str(obj_id), str(server_ip), str(port))
 
 
 class RPCServer(bootsteps.StartStopStep):
@@ -79,10 +142,7 @@ class RPCClient(bootsteps.StartStopStep):
         return True
 
     def create(self, p):
-        server = DISPATHCER_SERVER_NAME
-        port = PORT
-        ip = p.app.conf['HUB_IP']
-        p.rpc_client = PyroClient(server, ip, port)
+        p.rpc_client = PyroClient(p.app.conf['HUB_IP'])
         return self
 
     def start(self, p):

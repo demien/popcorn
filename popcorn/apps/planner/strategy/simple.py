@@ -7,6 +7,8 @@ from popcorn.apps.utils.broker_util import taste_soup
 
 class SimpleStrategy(BaseStrategy):
 
+    name = 'simple'
+
     def apply(self, **kwargs):
         previous_status = kwargs.get('previous_status')
         previous_time = kwargs.get('previous_time')
