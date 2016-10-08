@@ -5,7 +5,6 @@ from popcorn.rpc.pyro import PyroServer, PyroClient
 class PyroBase(unittest.TestCase):
 
     def setUp(self):
-
         self.server = self.create_server()
         self.client = self.create_client()
         self.server.start()
@@ -17,15 +16,16 @@ class PyroBase(unittest.TestCase):
         return PyroClient(self.server.ip)
 
     def tearDown(self):
-        self.server.stop()
+        if self.server.alive:
+            self.server.stop()
 
 
 class TestServer(PyroBase):
 
     def test_server_start_stop(self):
-        self.assertTrue(self.server.thread.is_alive())
+        self.assertTrue(self.server.alive)
         self.server.stop()
-        self.assertFalse(self.server.thread.is_alive())
+        self.assertFalse(self.server.alive)
 
 
 class TestClient(PyroBase):
