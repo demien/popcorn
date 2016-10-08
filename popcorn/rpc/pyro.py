@@ -38,6 +38,12 @@ class PyroServer(BaseRPCServer, PyroBase):
         host = socket.gethostname()
         return socket.gethostbyname(host)
 
+    @property
+    def alive(self):
+        if self.thread is not None and self.thread.is_alive():
+            return True
+        return False
+
     def start(self):
         """
         Start a pyro server
