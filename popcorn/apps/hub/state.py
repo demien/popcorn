@@ -40,8 +40,8 @@ def pop_order(machine_id):
         if not _plan[machine_id]:
             continue
         worker_cnt = PLAN[queue].pop(machine_id)
-        instruction_cmd = WorkerInstruction.generate_instruction_cmd(queue, worker_cnt)
-        order.add_instruction(InstructionType.WORKER, instruction_cmd)
+        instruction_cmd = WorkerInstruction.dump(queue, worker_cnt)
+        order.add_instruction(instruction_cmd)
     return None if order.empty else order
 
 
