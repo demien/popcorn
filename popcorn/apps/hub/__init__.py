@@ -106,7 +106,7 @@ class Hub(BaseApp):
     @staticmethod
     def report_demand(type, queue, result):
         debug('[Hub] - [Receive] - [Demand] - %s : %s' % (queue, result))
-        instruction = Instruction.create(type, WorkerInstruction.dump(queue, result))
+        instruction = Instruction.create(WorkerInstruction.dump(queue, result), type)
         current_worker_cnt = get_worker_cnt(instruction.queue)
         new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
         add_demand(instruction.queue, new_worker_cnt)

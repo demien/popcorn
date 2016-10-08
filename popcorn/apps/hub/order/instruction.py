@@ -1,8 +1,6 @@
-import abc
 import re
-from popcorn.utils import call_callable
-from celery.utils.imports import instantiate
 from operators import Operator
+from popcorn.utils import call_callable
 
 
 class InstructionType(object):
@@ -54,7 +52,7 @@ class WorkerInstruction(Instruction):
         try:
             pattern = r'(.*)%s(%s)(\d*)' % (WorkerInstruction.SEPERATOR, '|'.join(map(lambda x: re.escape(x.slug), Operator.ALL)))
             queue, operator_slug, worker_cnt = re.findall(pattern, cmd)[0]
-            operator = Operator.get_operator_by_slug(operator_slug)
+            operator = Operator.get(operator_slug)
             worker_cnt = int(worker_cnt)
         except:
             raise 'cmd is not valid: %s' % cmd

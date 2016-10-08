@@ -18,7 +18,7 @@ class Operator(object):
     ALL = [TO, INC, DEC]
 
     @staticmethod
-    def get_operator_by_slug(slug):
+    def get(slug):
         for operator in Operator.ALL:
             if operator.slug == slug:
                 return operator
