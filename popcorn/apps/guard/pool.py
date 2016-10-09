@@ -37,6 +37,7 @@ class Pool(object):
             logfile=logfile,
             pidfile=node_format(pidfile, hostname),
             state_db=node_format(state_db, hostname),
+            without_mingle=False,
             **kwargs
         )
         process = Process(target=self.start_pool, args=(pool, ))

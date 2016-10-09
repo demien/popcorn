@@ -74,8 +74,8 @@ class Hub(BaseApp):
         for queue, plan in PLAN.iteritems():
             for machine_id in plan.keys():
                 worker_cnt = PLAN[queue].pop(machine_id)
-                instruction_cmd = WorkerInstruction.generate_instruction_cmd(queue, worker_cnt)
-                machine_order[machine_id].add_instruction(InstructionType.WORKER, instruction_cmd)
+                instruction_cmd = WorkerInstruction.dump(queue, worker_cnt)
+                machine_order[machine_id].add_instruction(instruction_cmd)
         # send order
         for machine_id, order in machine_order.iteritems():
             self.get_guard_client(machine_id).call('popcorn.apps.guard.commands.receive_order', order)
@@ -106,7 +106,7 @@ class Hub(BaseApp):
     @staticmethod
     def report_demand(type, queue, result):
         debug('[Hub] - [Receive] - [Demand] - %s : %s' % (queue, result))
-        instruction = Instruction.create(type, WorkerInstruction.generate_instruction_cmd(queue, result))
+        instruction = Instruction.create(WorkerInstruction.dump(queue, result), type)
         current_worker_cnt = get_worker_cnt(instruction.queue)
         new_worker_cnt = instruction.operator.apply(current_worker_cnt, instruction.worker_cnt)
         add_demand(instruction.queue, new_worker_cnt)
