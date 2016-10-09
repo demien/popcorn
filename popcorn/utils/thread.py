@@ -1,5 +1,6 @@
 import ctypes
 import threading
+import time
 from popcorn.utils.log import get_log_obj
 
 
@@ -38,3 +39,10 @@ def terminate_thread(thread):
         # and you should call it again with exc=NULL to revert the effect"""
         ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.ident, None)
         raise SystemError("PyThreadState_SetAsyncExc failed")
+
+
+def wait_condition_till_timeout(condition, seconds):
+    timeout_start = time.time()
+    while condition() and time.time() < timeout_start + seconds:
+        continue
+    return condition()

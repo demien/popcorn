@@ -17,7 +17,7 @@ def start_planner(app, queue, strategy_name):
 
 def stop_planner(queue):
     info('[Planner] - [Stop] - Queue: %s' % queue)
-    planner = PlannerPool.get(queue)
+    planner = PlannerPool.pool[queue]
     if planner is None:
         debug('[Planner] - [Not Found] - Queue: %s' % queue)
     else:

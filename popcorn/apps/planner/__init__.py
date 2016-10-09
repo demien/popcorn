@@ -3,12 +3,15 @@ import time
 from collections import defaultdict
 from popcorn.apps.base import BaseApp
 from popcorn.apps.constants import TIME_SCALE
+from popcorn.apps.exceptions import PlannerException
 from popcorn.apps.hub import Hub
 from popcorn.apps.hub.order.instruction import InstructionType
 from popcorn.apps.planner.strategy import SimpleStrategy
 from popcorn.apps.utils.broker_util import taste_soup
 from popcorn.rpc.pyro import PyroClient
-from popcorn.utils import get_log_obj, get_pid, start_daemon_thread, terminate_thread, call_callable
+from popcorn.utils import (
+    get_log_obj, get_pid, start_daemon_thread, terminate_thread, call_callable, wait_condition_till_timeout
+)
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
@@ -59,12 +62,19 @@ class Planner(object):
         self.thread = None
         self.load_strategy(strategy_name)
         self.__shutdown = threading.Event()
+        self.loop_interval = 5
 
     def __repr__(self):
         return 'Queue: %s Strategy: %s' % (self.queue, self.strategy.name)
 
+    def __eq__(self, another):
+        return self.queue == another.queue and self.strategy == another.strategy
+
     @property
     def alive(self):
+        return self.thread is not None and self.thread.is_alive()
+
+    def is_alive(self):
         return self.thread is not None and self.thread.is_alive()
 
     def start(self):
@@ -81,9 +91,9 @@ class Planner(object):
         if not self.alive:
             return
         self.__shutdown.set()
-        if self.wait_condition_till_timeout(self.alive, 10):
+        if wait_condition_till_timeout(self.is_alive, 10):
             self.force_quit()
-        if self.wait_condition_till_timeout(self.alive, 10):
+        if wait_condition_till_timeout(self.is_alive, 10):
             raise PlannerException('Could not stop planner %s' % self.queue)
         debug('[Planner] - [Stop] - %s' % self)
 
@@ -95,13 +105,12 @@ class Planner(object):
         self.strategy = call_callable(STRATEGY_MAP[strategy_name])
 
     def loop(self, condition=lambda: True):
-        LOOP_INTERVAL = 5
         status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
         while condition and not self.__shutdown.isSet():
             debug('[Planner] - [Send] - [HeartBeat] : %s. PID: %s', self, get_pid())
             previous_timestamp = int(round(time.time() * TIME_SCALE))
             previous_status = status
-            time.sleep(LOOP_INTERVAL)
+            time.sleep(self.loop_interval)
             status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
             result = self.strategy.apply(
                 previous_status=previous_status,
@@ -112,9 +121,3 @@ class Planner(object):
             if result:
                 Hub.report_demand(InstructionType.WORKER, self.queue, result)
         info('[Planner] - [Stop] - %s' % self.queue)
-
-    def wait_condition_till_timeout(self, condition, seconds):
-        timeout_start = time.time()
-        while condition and time.time() < timeout_start + seconds:
-            continue
-        return condition
