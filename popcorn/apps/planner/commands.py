@@ -12,6 +12,8 @@ def start_planner(app, queue, strategy_name):
         planner.load_strategy(strategy_name)
     else:
         planner.start()
+    return planner
+
 
 def stop_planner(queue):
     info('[Planner] - [Stop] - Queue: %s' % queue)
@@ -20,3 +22,4 @@ def stop_planner(queue):
         debug('[Planner] - [Not Found] - Queue: %s' % queue)
     else:
         planner.stop()
+    return planner

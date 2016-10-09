@@ -1,6 +1,7 @@
 import re
 from operators import Operator
 from popcorn.utils import call_callable
+from popcorn.apps.exceptions import InstructionCMDException
 
 
 class InstructionType(object):
@@ -36,6 +37,9 @@ class WorkerInstruction(Instruction):
         self.cmd = cmd
         self.queue, self.operator, self.worker_cnt = WorkerInstruction.load(cmd)
 
+    def __eq__(self, another):
+        return self.cmd == another.cmd
+
     @staticmethod
     def dump(queue, worker_cnt):
         if worker_cnt > 0:
@@ -55,5 +59,5 @@ class WorkerInstruction(Instruction):
             operator = Operator.get(operator_slug)
             worker_cnt = int(worker_cnt)
         except:
-            raise 'cmd is not valid: %s' % cmd
+            raise InstructionCMDException(cmd)
         return queue, operator, worker_cnt

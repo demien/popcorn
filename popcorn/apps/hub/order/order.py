@@ -12,3 +12,7 @@ class Order(object):
     @property
     def empty(self):
         return False if self.instructions else True
+
+    @property
+    def length(self):
+        return len(self.instructions)
