@@ -23,6 +23,10 @@ def remove_demand(queue):
 def get_worker_cnt(queue):
     return DEMAND[queue]
 
+def reset_demand():
+    global DEMAND
+    DEMAND = defaultdict(int)
+
 
 #: The source of plan is demand. Load balance module will split the demand in to plan by machine
 #: Eg: {queue: {machine: 10}, }

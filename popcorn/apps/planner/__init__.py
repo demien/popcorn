@@ -107,17 +107,20 @@ class Planner(object):
     def loop(self, condition=lambda: True):
         status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
         while condition and not self.__shutdown.isSet():
-            debug('[Planner] - [Send] - [HeartBeat] : %s. PID: %s', self, get_pid())
-            previous_timestamp = int(round(time.time() * TIME_SCALE))
-            previous_status = status
-            time.sleep(self.loop_interval)
-            status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
-            result = self.strategy.apply(
-                previous_status=previous_status,
-                previous_time=previous_timestamp,
-                status=status,
-                time=int(round(time.time() * TIME_SCALE))
-            )
-            if result:
-                Hub.report_demand(InstructionType.WORKER, self.queue, result)
+            try:
+                debug('[Planner] - [Send] - [HeartBeat] : %s. PID: %s', self, get_pid())
+                previous_timestamp = int(round(time.time() * TIME_SCALE))
+                previous_status = status
+                time.sleep(self.loop_interval)
+                status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
+                result = self.strategy.apply(
+                    previous_status=previous_status,
+                    previous_time=previous_timestamp,
+                    status=status,
+                    time=int(round(time.time() * TIME_SCALE))
+                )
+                if result:
+                    Hub.report_demand(InstructionType.WORKER, self.queue, result)
+            except Exception as e:
+                error('[Planner] - [Exception] - [Loop] : %s. PID: %s', e.message, get_pid())
         info('[Planner] - [Stop] - %s' % self.queue)

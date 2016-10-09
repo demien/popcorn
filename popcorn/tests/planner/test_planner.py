@@ -1,11 +1,16 @@
 import unittest
+import logging
+from collections import defaultdict
 from mock import MagicMock
 from popcorn.apps import planner
 from popcorn.apps.planner import PlannerPool, Planner
 from popcorn.apps.planner.commands import start_planner, stop_planner
 from popcorn.apps.planner.strategy.simple import SimpleStrategy
-from popcorn.apps.hub.state import get_worker_cnt
+from popcorn.apps.hub.state import get_worker_cnt, reset_demand
 from popcorn.utils import wait_condition_till_timeout
+
+
+logging.basicConfig(level=logging.CRITICAL)
 
 
 class App(object):
@@ -18,6 +23,7 @@ class TestPlanner(unittest.TestCase):
     app = App()
 
     def setUp(self):
+        reset_demand()
         planner.taste_soup = MagicMock(return_value=1)
         self.planner = Planner(self.app, self.queue, self.strategy_name)
         self.planner.loop_interval = 0.1
@@ -39,9 +45,17 @@ class TestPlanner(unittest.TestCase):
         self.assertEqual(get_worker_cnt(self.queue), 0)
         self.planner.strategy.apply = MagicMock(return_value=1)
         self.planner.start()
-        wait_condition_till_timeout(lambda: True, 2)
+        wait_condition_till_timeout(lambda: True, 1)
         self.planner.strategy.apply.assert_called()
         self.assertTrue(get_worker_cnt(self.queue) > 0)
+
+    def test_loop_raise_exception(self):
+        self.assertEqual(get_worker_cnt(self.queue), 0)
+        self.planner.strategy.apply = MagicMock(return_value='invalid string value')
+        self.planner.start()
+        wait_condition_till_timeout(lambda: True, 1)
+        self.planner.strategy.apply.assert_called()
+        self.assertTrue(get_worker_cnt(self.queue) == 0)
 
     def test_command(self):
         planner = start_planner(self.app, self.queue, self.strategy_name)
