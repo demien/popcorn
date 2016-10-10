@@ -53,6 +53,11 @@ class PlannerPool(object):
     def stats(cls):
         return {q: str(v) for q, v in cls.pool.items()}
 
+    @classmethod
+    def stop(cls):
+        for planner in cls.pool.values():
+            planner.stop()
+
 
 class Planner(object):
 

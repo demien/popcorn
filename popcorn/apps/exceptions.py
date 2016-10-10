@@ -12,3 +12,9 @@ class InstructionCMDException(Exception):
     def __init__(self, cmd):
         message = 'Invalid cmd: %s when build instruction' % cmd
         super(InstructionCMDException, self).__init__(message)
+
+
+class CouldNotStopException(Exception):
+    def __init__(self, target):
+        message = 'Could not stop %s.' % target
+        super(CouldNotStopException, self).__init__(message)

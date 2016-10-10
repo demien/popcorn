@@ -10,7 +10,8 @@ from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
 from popcorn.rpc.pyro import PyroServer, PyroClient
-from popcorn.utils import get_log_obj, get_pid
+from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout
+from popcorn.apps.exceptions import CouldNotStopException
 from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt
 
 
@@ -24,9 +25,10 @@ class Hub(BaseApp):
         super(Hub, self).init(**kwargs)
 
         self.rpc_server = PyroServer()  # fix me, load it dynamiclly
+        self.guard_client = defaultdict(lambda: None)
         self.__shutdown_hub = threading.Event()
         self.LOOP_INTERVAL = 10  # second
-        self.guard_client = defaultdict(lambda: None)
+        self.alive = False
 
     def start(self, condition=lambda: True):
         """
@@ -40,6 +42,23 @@ class Hub(BaseApp):
         self._start_rpc_server()
         self._start_default_planners()
         self._start_loop(condition)
+
+    def stop(self):
+        '''
+        Step 1. Stop all planner
+        Step 2. Stop rpc server
+        Step 3. Stop the loop
+        '''
+        from popcorn.apps.planner import PlannerPool
+        PlannerPool.stop()
+        if self.rpc_server.alive:
+            self.rpc_server.stop()
+        self.__shutdown_hub.set()
+        if wait_condition_till_timeout(self.is_alive, 10):
+            raise CouldNotStopException('hub')
+
+    def is_alive(self):
+        return self.alive
 
     def get_guard_client(self, ip):
         if self.guard_client[ip] is None:
@@ -62,10 +81,12 @@ class Hub(BaseApp):
         3. Check healthy for guard & planner (to do)
         """
         debug('[Hub] - [Start] - [Loop] : PID %s' % get_pid())
-        while not self.__shutdown_hub.isSet() and condition:
+        self.alive = True
+        while not self.__shutdown_hub.isSet() and condition():
             self.analyze_demand()
             self.send_order_to_guard()
             time.sleep(self.LOOP_INTERVAL)
+        self.alive = False
         debug('[Hub] - [Exit] - [Loop]')
 
     def send_order_to_guard(self):
@@ -79,7 +100,6 @@ class Hub(BaseApp):
         # send order
         for machine_id, order in machine_order.iteritems():
             self.get_guard_client(machine_id).call('popcorn.apps.guard.commands.receive_order', order)
-
 
     def analyze_demand(self):
         if not DEMAND:

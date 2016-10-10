@@ -41,8 +41,23 @@ def terminate_thread(thread):
         raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
-def wait_condition_till_timeout(condition, seconds):
+def wait_condition_till_timeout(condition, seconds, true_condition=True):
     timeout_start = time.time()
-    while condition() and time.time() < timeout_start + seconds:
-        continue
-    return condition()
+    if true_condition:
+        while condition() and time.time() < timeout_start + seconds:
+            continue
+        return condition()
+    else:
+        while not condition() and time.time() < timeout_start + seconds:
+            continue
+        return not condition()
+
+
+class TimeOut(object):
+    def __init__(self, seconds):
+        self.start = time.time()
+        self.seconds = seconds
+
+    def check(self):
+        return time.time() > self.start + self.seconds
+

@@ -71,6 +71,13 @@ class TestPlanner(unittest.TestCase):
         self.assertEqual(planner, _planner)
         self.assertEqual(PlannerPool.stats().keys(), [self.queue])
 
+    def test_planner_pool_stop(self):
+        planner_1 = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
+        planner_2 = PlannerPool.get_or_create_planner(self.app, 'q2', self.strategy_name)
+        PlannerPool.stop()
+        self.assertFalse(planner_1.alive)
+        self.assertFalse(planner_2.alive)
+
     def tearDown(self):
         if self.planner.alive:
             self.planner.stop()
