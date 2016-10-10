@@ -9,9 +9,9 @@ from celery import bootsteps
 from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
-from popcorn.rpc.pyro import PyroServer, PyroClient
+from popcorn.rpc.pyro import PyroServer, PyroClient, HUB_PORT, GUARD_PORT
 from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout
-from popcorn.apps.exceptions import CouldNotStopException
+from popcorn.apps.exceptions import CouldNotStopException, CouldNotStartException
 from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt
 
 
@@ -24,7 +24,7 @@ class Hub(BaseApp):
         self.app = app or self.app
         super(Hub, self).init(**kwargs)
 
-        self.rpc_server = PyroServer()  # fix me, load it dynamiclly
+        self.rpc_server = PyroServer(HUB_PORT)  # fix me, load it dynamiclly
         self.guard_client = defaultdict(lambda: None)
         self.__shutdown_hub = threading.Event()
         self.LOOP_INTERVAL = 10  # second
@@ -60,9 +60,12 @@ class Hub(BaseApp):
     def is_alive(self):
         return self.alive
 
+    def is_dead(self):
+        return not self.alive
+
     def get_guard_client(self, ip):
         if self.guard_client[ip] is None:
-            self.guard_client[ip] = PyroClient(ip)
+            self.guard_client[ip] = PyroClient(ip, GUARD_PORT)
         return self.guard_client[ip]
 
     def _start_rpc_server(self):
@@ -83,9 +86,13 @@ class Hub(BaseApp):
         debug('[Hub] - [Start] - [Loop] : PID %s' % get_pid())
         self.alive = True
         while not self.__shutdown_hub.isSet() and condition():
-            self.analyze_demand()
-            self.send_order_to_guard()
-            time.sleep(self.LOOP_INTERVAL)
+            try:
+                self.analyze_demand()
+                self.send_order_to_guard()
+            except Exception as e:
+                error('[Hub] - [Exception] - [Loop] : %s. PID: %s', e.message, get_pid())
+            finally:
+                time.sleep(self.LOOP_INTERVAL)
         self.alive = False
         debug('[Hub] - [Exit] - [Loop]')
 

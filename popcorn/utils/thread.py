@@ -42,13 +42,13 @@ def terminate_thread(thread):
 
 
 def wait_condition_till_timeout(condition, seconds, true_condition=True):
-    timeout_start = time.time()
+    end_time = time.time() + seconds
     if true_condition:
-        while condition() and time.time() < timeout_start + seconds:
+        while condition() and time.time() < end_time:
             continue
         return condition()
     else:
-        while not condition() and time.time() < timeout_start + seconds:
+        while not condition() and time.time() < end_time:
             continue
         return not condition()
 

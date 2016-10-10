@@ -1,5 +1,5 @@
 import unittest
-from popcorn.rpc.pyro import PyroServer, PyroClient
+from popcorn.rpc.pyro import PyroServer, PyroClient, HUB_PORT
 
 
 class PyroBase(unittest.TestCase):
@@ -10,10 +10,10 @@ class PyroBase(unittest.TestCase):
         self.server.start()
 
     def create_server(self):
-        return PyroServer()
+        return PyroServer(HUB_PORT)
 
     def create_client(self):
-        return PyroClient(self.server.ip)
+        return PyroClient(self.server.ip, HUB_PORT)
 
     def tearDown(self):
         if self.server.alive:

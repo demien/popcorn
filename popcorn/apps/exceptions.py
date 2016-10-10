@@ -18,3 +18,9 @@ class CouldNotStopException(Exception):
     def __init__(self, target):
         message = 'Could not stop %s.' % target
         super(CouldNotStopException, self).__init__(message)
+
+
+class CouldNotStartException(Exception):
+    def __init__(self, target):
+        message = 'Could not start %s.' % target
+        super(CouldNotStartException, self).__init__(message)

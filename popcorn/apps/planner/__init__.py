@@ -8,7 +8,7 @@ from popcorn.apps.hub import Hub
 from popcorn.apps.hub.order.instruction import InstructionType
 from popcorn.apps.planner.strategy import SimpleStrategy
 from popcorn.apps.utils.broker_util import taste_soup
-from popcorn.rpc.pyro import PyroClient
+from popcorn.rpc.pyro import PyroClient, HUB_PORT
 from popcorn.utils import (
     get_log_obj, get_pid, start_daemon_thread, terminate_thread, call_callable, wait_condition_till_timeout
 )
@@ -24,7 +24,7 @@ class RegisterPlanner(BaseApp):
     def __init__(self, app, **kwargs):
         self.app = app or self.app
         super(RegisterPlanner, self).init(**kwargs)
-        self.rpc_client = PyroClient(self.app.conf['HUB_IP'])
+        self.rpc_client = PyroClient(self.app.conf['HUB_IP'], HUB_PORT)
 
     def start(self):
         self.rpc_client.call('popcorn.apps.planner.commands:start_planner',

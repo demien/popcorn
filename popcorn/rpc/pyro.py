@@ -3,7 +3,7 @@ import Pyro4
 import socket
 import threading
 from celery import bootsteps
-from popcorn.rpc import DISPATHCER_SERVER_OBJ_ID, PORT
+from popcorn.rpc import DISPATHCER_SERVER_OBJ_ID, GUARD_PORT, HUB_PORT
 from popcorn.rpc.base import BaseRPCServer, BaseRPCClient, RPCDispatcher
 from popcorn.utils import get_log_obj, get_pid
 
@@ -21,15 +21,12 @@ class PyroBase(object):
         Pyro4.config.SERVERTYPE = DEFAULT_SERVERTYPE
         Pyro4.config.SERIALIZER = DEFAULT_SERIALIZER
 
-    @property
-    def port(self):
-        return PORT
-
 
 class PyroServer(BaseRPCServer, PyroBase):
 
-    def __init__(self, **kwargs):
+    def __init__(self, port):
         PyroBase.__init__(self)
+        self.port = port
         self.daemon = Pyro4.Daemon(host=self.ip, port=self.port)  # init a Pyro daemon
         self.thread = None
 
@@ -96,9 +93,9 @@ class PyroServer(BaseRPCServer, PyroBase):
 
 class PyroClient(BaseRPCClient, PyroBase):
 
-    def __init__(self, server_ip):
+    def __init__(self, server_ip, server_port):
         PyroBase.__init__(self)
-        dispatcher_uri = self.get_uri(DISPATHCER_SERVER_OBJ_ID, server_ip, self.port)
+        dispatcher_uri = self.get_uri(DISPATHCER_SERVER_OBJ_ID, server_ip, server_port)
         self.default_proxy = self.get_proxy_obj(dispatcher_uri)  # get local proxy obj
 
     def call(self, path, *args, **kwargs):
@@ -115,47 +112,3 @@ class PyroClient(BaseRPCClient, PyroBase):
 
     def get_uri(self, obj_id, server_ip, port):
         return 'PYRO:%s@%s:%s' % (str(obj_id), str(server_ip), str(port))
-
-
-class RPCServer(bootsteps.StartStopStep):
-
-    def __init__(self, h, **kwargs):
-        h.test = None
-
-    def include_if(self, h):
-        return True
-
-    def create(self, h):
-        self.rpc_server = PyroServer()  # fix me. Load rpc implementation dynamiclly
-        return self
-
-    def start(self, h):
-        self.rpc_server.start()
-
-    def stop(self, h):
-        print 'in stop'
-
-    def terminate(self, h):
-        print 'in terminate'
-
-
-class RPCClient(bootsteps.StartStopStep):
-
-    def __init__(self, p, **kwargs):
-        pass
-
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        p.rpc_client = PyroClient(p.app.conf['HUB_IP'])
-        return self
-
-    def start(self, p):
-        pass
-
-    def stop(self, h):
-        print 'in stop'
-
-    def terminate(self, h):
-        print 'in terminate'

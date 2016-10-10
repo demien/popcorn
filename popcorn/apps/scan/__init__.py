@@ -1,5 +1,5 @@
 from celery import bootsteps
-from popcorn.rpc.pyro import RPCClient
+from popcorn.rpc.pyro import PyroClient, HUB_PORT
 
 
 class ScanTarget(object):
@@ -9,27 +9,6 @@ class ScanTarget(object):
 
 class Scan(object):
 
-    class Blueprint(bootsteps.Blueprint):
-        """Hub bootstep blueprint."""
-        name = 'Guard'
-        default_steps = set([
-            'popcorn.rpc.pyro:RPCClient',
-            'popcorn.apps.scan:DoScan',
-        ])
-
-    def __init__(self, app, target):
-        self.app = app or self.app
-        self.target = target
-        self.steps = []
-        self.blueprint = self.Blueprint(app=self.app)
-        self.blueprint.apply(self)
-
-    def start(self):
-        self.blueprint.start(self)
-
-
-class DoScan(bootsteps.StartStopStep):
-    requires = (RPCClient,)
     HEADER_PATTERN = '''
 /**************************
  Scan %s Result:
@@ -40,21 +19,17 @@ class DoScan(bootsteps.StartStopStep):
     SEPERATOR = '-' * 20
     TAB = '\t'
 
-    def __init__(self, p, **kwargs):
-        pass
+    def __init__(self, app, target):
+        self.app = app or self.app
+        self.target = target
+        self.rpc_client = PyroClient(self.app.conf['HUB_IP'], HUB_PORT)
 
-    def include_if(self, p):
-        return True
-
-    def create(self, p):
-        pass
-
-    def start(self, p):
-        re = p.rpc_client.call('popcorn.apps.hub.commands.scan', target=p.target)
-        print self.HEADER_PATTERN % p.target
-        if p.target == ScanTarget.MACHINE:
+    def start(self):
+        re = self.rpc_client.call('popcorn.apps.hub.commands.scan', target=self.target)
+        print self.HEADER_PATTERN % self.target
+        if self.target == ScanTarget.MACHINE:
             self._scan_machine(re)
-        if p.target == ScanTarget.PLANNER:
+        if self.target == ScanTarget.PLANNER:
             self._scan_planner(re)
         print self.FOOTER
 

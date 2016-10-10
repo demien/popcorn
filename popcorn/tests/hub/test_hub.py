@@ -1,51 +1,20 @@
 import logging
 import unittest
+from time import sleep
 from mock import MagicMock
 from popcorn.apps.hub import Hub
 from popcorn.apps.hub.state import DEMAND
 from popcorn.apps.hub.order.instruction import InstructionType
 from popcorn.apps.planner import PlannerPool
+from popcorn.tests.mock_tool import App, Config
 from popcorn.utils import start_daemon_thread, wait_condition_till_timeout
 
 
 logging.basicConfig(level=logging.CRITICAL)
 
 
-class Foo(object):
-    pass
-
-
-class Config(object):
-
-    def __init__(self, config):
-        self.config = config
-    
-    def __getitem__(self, key):
-        return self.config.get(key, '')
-
-    def find_value_for_key(self, key):
-        return ''
-
-
-class App(object):
-    log = Foo()
-
-    def __init__(self):
-        self.log.setup = MagicMock()
-
-
 class TestHub(unittest.TestCase):
     app = App()
-    default_queues = {
-        'q1': 'simple',
-        'q2': 'simple',
-    }
-    app.conf = Config({
-        'DEFAULT_QUEUE': default_queues,
-        'BROKER_URL': '1',
-    })
-    app.conf.find_value_for_key = MagicMock()
-    app.conf.get = MagicMock()
     hub = Hub(app)
     hub.LOOP_INTERVAL = 0.1
 
@@ -59,6 +28,7 @@ class TestHub(unittest.TestCase):
         self.assertFalse(self.hub.alive)
         self.assertFalse(self.hub.rpc_server.alive)
         start_daemon_thread(self.hub.start)
+        wait_condition_till_timeout(self.hub.is_alive, 5, False)
         if wait_condition_till_timeout(self.hub.is_alive, 5, False):
             raise 'could not start hub'
         self.assertTrue(self.hub.alive)

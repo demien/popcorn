@@ -9,13 +9,11 @@ class Machine(object):
 
     SNAPSHOT_SIZE = 10
 
-    _CPU_WINDOW_SIZE = 5
-
     def __init__(self, healthy_mock=False):
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
-        self._plan = defaultdict(int)
+        # self._plan = defaultdict(int)
         self.id = self.get_id()
         self.healthy_mock = healthy_mock
 
@@ -28,10 +26,10 @@ class Machine(object):
         return socket.gethostname()
 
     def get_id(self):
-        # return '%s@%s' % (self.hostname, self.ip)
         return self.ip
 
-    def is_healthy(self):
+    @property
+    def healthy(self):
         if self.healthy_mock:
             return True
         return self.hardware.healthy
@@ -42,21 +40,6 @@ class Machine(object):
             self.snapshots.pop(0)
         self.snapshots.append(snapshot)
         return snapshot
-
-    def get_worker_number(self, queue):
-        return self._plan[queue]
-
-    def current_worker_number(self, queue):
-        return 1
-
-    def plan(self, *queues):
-        return {queue: self.get_worker_number(queue) for queue in queues}
-
-    def add_plan(self, queue, worker_number):
-        self._plan[queue] += worker_number
-
-    def clear_plan(self):
-        self._plan = defaultdict(int)
 
 
 class Component(object):
@@ -96,7 +79,7 @@ class Memory(Component):
 
     G = 1024 * 1024 * 1024  # gigabyte
     AVAILABLE_USAGE_THRESHOLD = 0.5 * G
-    AVAILABLE_PERCENTAGE_THRESHOLD = 40  # percentage
+    AVAILABLE_PERCENTAGE_THRESHOLD = 30  # percentage
 
     @property
     def value(self):
@@ -139,7 +122,7 @@ class Camera(object):
     def snapshot(self):
         snapshot = {
             'time': datetime.now(),
-            'healthy': self.machine.is_healthy(),
+            'healthy': self.machine.healthy,
             'hardware': self.machine.hardware.to_string(),
         }
         return snapshot
