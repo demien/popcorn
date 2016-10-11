@@ -27,7 +27,8 @@ class App(object):
 
     conf = Config({
         'DEFAULT_QUEUE': default_queues,
-        'BROKER_URL': '1',
+        'BROKER_URL': '127.0.0.1',
+        'HUB_IP': '172.17.0.3',
     })
 
     def __init__(self):

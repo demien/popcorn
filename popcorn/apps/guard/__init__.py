@@ -33,6 +33,7 @@ class Guard(BaseApp):
         Step 2. Register to hub
         Step 3. Start loop
         """
+        self.__shutdown_guard.clear()
         self._start_rpc_server()
         self._register_to_hub()
         self._start_loop(condition)

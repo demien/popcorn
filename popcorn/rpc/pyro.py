@@ -12,7 +12,8 @@ debug, info, warn, error, critical = get_log_obj(__name__)
 __all__ = ['PyroServer', 'PyroClient']
 
 DEFAULT_SERIALIZER = 'pickle'
-DEFAULT_SERVERTYPE = 'multiplex'
+# DEFAULT_SERVERTYPE = 'multiplex'
+DEFAULT_SERVERTYPE = 'thread'
 
 
 class PyroBase(object):
@@ -27,7 +28,7 @@ class PyroServer(BaseRPCServer, PyroBase):
     def __init__(self, port):
         PyroBase.__init__(self)
         self.port = port
-        self.daemon = Pyro4.Daemon(host=self.ip, port=self.port)  # init a Pyro daemon
+        self.daemon = None
         self.thread = None
 
     @property
@@ -41,6 +42,10 @@ class PyroServer(BaseRPCServer, PyroBase):
             return True
         return False
 
+    def start_daemon(self):
+        if self.daemon is None or self.daemon.transportServer is None:
+                self.daemon = Pyro4.Daemon(host=self.ip, port=self.port)  # init a Pyro daemon
+
     def start(self):
         """
         Start a pyro server
@@ -48,6 +53,7 @@ class PyroServer(BaseRPCServer, PyroBase):
         Fire a new thread for the server daemon loop.
         This mehtod is blocking till the server daemon loop is ready.
         """
+        self.start_daemon()
         uri = self.register(RPCDispatcher, DISPATHCER_SERVER_OBJ_ID)
         thread = threading.Thread(target=self.daemon.requestLoop)
         thread.daemon = True
@@ -78,7 +84,10 @@ class PyroServer(BaseRPCServer, PyroBase):
         """
         Register the obj to the server.
         """
-        return self.daemon.register(obj, obj_id)  # register a obj with obj id
+        try:
+            return self.daemon.register(obj, obj_id)  # register a obj with obj id
+        except:
+            return self.daemon.uriFor(obj_id)
 
     def unregister(self, obj):
         """

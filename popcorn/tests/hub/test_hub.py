@@ -28,7 +28,6 @@ class TestHub(unittest.TestCase):
         self.assertFalse(self.hub.alive)
         self.assertFalse(self.hub.rpc_server.alive)
         start_daemon_thread(self.hub.start)
-        wait_condition_till_timeout(self.hub.is_alive, 5, False)
         if wait_condition_till_timeout(self.hub.is_alive, 5, False):
             raise 'could not start hub'
         self.assertTrue(self.hub.alive)
