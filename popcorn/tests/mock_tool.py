@@ -1,4 +1,5 @@
 from mock import MagicMock
+from popcorn.utils import ip
 
 default_queues = {
     'q1': 'simple',
@@ -28,7 +29,7 @@ class App(object):
     conf = Config({
         'DEFAULT_QUEUE': default_queues,
         'BROKER_URL': '127.0.0.1',
-        'HUB_IP': '172.17.0.3',
+        'HUB_IP': ip(),
     })
 
     def __init__(self):

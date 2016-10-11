@@ -3,6 +3,7 @@ import psutil
 import socket
 from collections import defaultdict
 from datetime import datetime
+from popcorn.utils import ip as _ip, hostname as _hostname
 
 
 class Machine(object):
@@ -13,17 +14,16 @@ class Machine(object):
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
-        # self._plan = defaultdict(int)
         self.id = self.get_id()
         self.healthy_mock = healthy_mock
 
     @property
     def ip(self):
-        return socket.gethostbyname(self.hostname)
+        return _ip()
 
     @property
     def hostname(self):
-        return socket.gethostname()
+        return _hostname()
 
     def get_id(self):
         return self.ip
