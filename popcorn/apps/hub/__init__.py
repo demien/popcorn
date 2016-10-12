@@ -12,7 +12,7 @@ from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, I
 from popcorn.rpc.pyro import PyroServer, PyroClient, HUB_PORT, GUARD_PORT
 from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout
 from popcorn.apps.exceptions import CouldNotStopException, CouldNotStartException
-from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt
+from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt, reset, reset_machine
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
@@ -38,7 +38,6 @@ class Hub(BaseApp):
         Step 3. Start loop
         """
         self.__shutdown_hub.clear()
-
         self._start_rpc_server()
         self._start_default_planners()
         self._start_loop(condition)
@@ -49,6 +48,7 @@ class Hub(BaseApp):
         Step 2. Stop rpc server
         Step 3. Stop the loop
         '''
+        reset()
         from popcorn.apps.planner import PlannerPool
         PlannerPool.stop()
         if self.rpc_server.alive:

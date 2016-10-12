@@ -1,11 +1,14 @@
 import unittest
 import logging
+import time
 from mock import MagicMock
-from popcorn.apps.guard import Guard
-from popcorn.apps.hub import Hub
+from popcorn.apps.exceptions import CouldNotStartException
+from popcorn.apps.guard import Guard, commands
+from popcorn.apps.hub import MACHINES, PLAN, reset, Hub
+from popcorn.apps.hub.order import Order
+from popcorn.apps.hub.order.instruction import InstructionType, Instruction
 from popcorn.tests.mock_tool import App, Config
-from popcorn.utils import start_daemon_thread, wait_condition_till_timeout
-from popcorn.apps.hub import MACHINES
+from popcorn.utils import start_daemon_thread, wait_condition_till_timeout, ip
 
 
 logging.basicConfig(level=logging.CRITICAL)
@@ -24,21 +27,38 @@ class TestGuard(unittest.TestCase):
         self.guard.heartbeat = MagicMock()
         start_daemon_thread(self.guard.start)
         if wait_condition_till_timeout(self.guard.is_alive, 5, False):
-            raise 'Could not start guard'
+            raise CouldNotStartException('guard')
         self.assertTrue(self.guard.alive)
         self.guard.heartbeat.assert_called()
         self.guard.stop()
         self.assertFalse(self.guard.alive)
 
     def test_heart_beat(self):
+        PLAN = {'q1': {self.guard.machine.id: 1}}
         start_daemon_thread(self.hub.start)
         if wait_condition_till_timeout(self.hub.is_alive, 5, False):
-            raise 'could not start hub'
+            raise CouldNotStartException('hub')
+        start_daemon_thread(self.guard.start)
+        if wait_condition_till_timeout(self.guard.is_alive, 5, False):
+            raise CouldNotStartException('guard')
+        Hub.report_demand(InstructionType.WORKER, 'q1', 2)
+        commands.receive_order = MagicMock()
+        order = Order()
+        order.add_instruction('abc:+1', InstructionType.WORKER)
+        # commands.receive_order.assert_called()
+        # receive_order.assert_called_with(order)
+
+    def test_register_to_hub(self):
+        reset()
+        start_daemon_thread(self.hub.start)
+        if wait_condition_till_timeout(self.hub.is_alive, 5, False):
+            raise CouldNotStartException('hub')
         self.assertEqual(len(MACHINES), 0)
         start_daemon_thread(self.guard.start)
         if wait_condition_till_timeout(self.guard.is_alive, 5, False):
-            raise 'Could not start guard'
+            raise CouldNotStartException('guard')
         self.assertEqual(len(MACHINES), 1)
+        self.assertEqual(MACHINES.keys(), [self.guard.machine.id])
 
     def tearDown(self):
         if self.hub.alive:

@@ -41,7 +41,7 @@ class TestPlanner(unittest.TestCase):
         wait_condition_till_timeout(self.planner.is_alive, 10)
         self.assertFalse(self.planner.alive)
 
-    def test_loop(self):
+    def test_loop_report_demand(self):
         self.assertEqual(get_worker_cnt(self.queue), 0)
         self.planner.strategy.apply = MagicMock(return_value=1)
         self.planner.start()

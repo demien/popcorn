@@ -1,7 +1,7 @@
 from popcorn.apps.scan import ScanTarget
 from popcorn.apps.planner import PlannerPool
 from popcorn.utils import get_log_obj
-from .state import update_machine as _update_machine, MACHINES
+from .state import update_machine as _update_machine, MACHINES, add_demand
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)

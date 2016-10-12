@@ -12,8 +12,8 @@ debug, info, warn, error, critical = get_log_obj(__name__)
 __all__ = ['PyroServer', 'PyroClient']
 
 DEFAULT_SERIALIZER = 'pickle'
-# DEFAULT_SERVERTYPE = 'multiplex'
-DEFAULT_SERVERTYPE = 'thread'
+DEFAULT_SERVERTYPE = 'multiplex'
+# DEFAULT_SERVERTYPE = 'thread'
 
 
 class PyroBase(object):

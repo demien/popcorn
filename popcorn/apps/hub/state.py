@@ -6,6 +6,13 @@ from popcorn.utils.log import get_log_obj
 
 debug, info, warn, error, critical = get_log_obj(__name__)
 
+
+def reset():
+    reset_demand()
+    reset_plan()
+    reset_machine()
+    reset_planner()
+
 #: Demand update by planner.
 #: Planner monitoring the queue and calculate the demond
 #: Eg: {queue: 123, }
@@ -23,9 +30,9 @@ def remove_demand(queue):
 def get_worker_cnt(queue):
     return DEMAND[queue]
 
+
 def reset_demand():
-    global DEMAND
-    DEMAND = defaultdict(int)
+    DEMAND.clear()
 
 
 #: The source of plan is demand. Load balance module will split the demand in to plan by machine
@@ -34,7 +41,6 @@ PLAN = defaultdict(lambda: defaultdict(int))
 
 
 def add_plan(queue, machine, worker_cnt):
-    global PLAN
     PLAN[queue][machine] += worker_cnt
 
 
@@ -49,6 +55,10 @@ def pop_order(machine_id):
     return None if order.empty else order
 
 
+def reset_plan():
+    PLAN.clear()
+
+
 #: All the machine register to hub. It's a list.
 MACHINES = defaultdict(lambda: None)
 
@@ -57,7 +67,14 @@ def update_machine(machine):
     MACHINES[machine.id] = machine
 
 
+def reset_machine():
+    MACHINES.clear()
+
+
 #: All the planner. It's a dict. Key is queue name.
 PLANNERS = defaultdict(lambda: None)
 
+
+def reset_planner():
+    PLANNERS.clear()
 
