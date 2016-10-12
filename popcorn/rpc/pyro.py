@@ -85,8 +85,8 @@ class PyroServer(BaseRPCServer, PyroBase):
         Register the obj to the server.
         """
         try:
-            return self.daemon.register(obj, obj_id)  # register a obj with obj id
-        except:
+            return self.daemon.register(obj, obj_id, force=True)  # register a obj with obj id
+        except Exception as e:
             return self.daemon.uriFor(obj_id)
 
     def unregister(self, obj):
@@ -114,7 +114,10 @@ class PyroClient(BaseRPCClient, PyroBase):
         :param str path: the path of the callable obj. A valid one: popcorn.apps.hub:Hub.scan.
          More detail of path please check popcorn.utils.imports.symbol_by_name
         """
-        return self.default_proxy.dispatch(path, *args, **kwargs)
+        try:
+            return self.default_proxy.dispatch(path, *args, **kwargs)
+        except Exception as e:
+            error('[RPC Client] - [Call] - [Error]: %s' % e.message)
 
     def get_proxy_obj(self, uri):
         return Pyro4.Proxy(uri)

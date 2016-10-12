@@ -5,10 +5,9 @@ from mock import MagicMock
 from popcorn.apps.exceptions import CouldNotStartException
 from popcorn.apps.guard import Guard, commands
 from popcorn.apps.hub import MACHINES, PLAN, reset, Hub
-from popcorn.apps.hub.order import Order
-from popcorn.apps.hub.order.instruction import InstructionType, Instruction
+from popcorn.apps.hub.order.instruction import InstructionType
 from popcorn.tests.mock_tool import App, Config
-from popcorn.utils import start_daemon_thread, wait_condition_till_timeout, ip
+from popcorn.utils import start_daemon_thread, wait_condition_till_timeout
 
 
 logging.basicConfig(level=logging.CRITICAL)
@@ -43,10 +42,8 @@ class TestGuard(unittest.TestCase):
             raise CouldNotStartException('guard')
         Hub.report_demand(InstructionType.WORKER, 'q1', 2)
         commands.receive_order = MagicMock()
-        order = Order()
-        order.add_instruction('abc:+1', InstructionType.WORKER)
-        # commands.receive_order.assert_called()
-        # receive_order.assert_called_with(order)
+        time.sleep(2)
+        commands.receive_order.assert_called()
 
     def test_register_to_hub(self):
         reset()
