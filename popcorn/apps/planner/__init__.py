@@ -42,6 +42,10 @@ class PlannerPool(object):
     pool = defaultdict(lambda: None)
 
     @classmethod
+    def reset(cls):
+        cls.pool.clear()
+
+    @classmethod
     def get_or_create_planner(cls, app, queue, strategy_name):
         planner = cls.pool.get(queue)
         if planner is None:

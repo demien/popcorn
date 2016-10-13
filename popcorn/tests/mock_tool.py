@@ -1,4 +1,5 @@
-from mock import MagicMock
+# from mock import MagicMock, Mock
+import mock
 from popcorn.utils import ip
 
 default_queues = {
@@ -7,13 +8,18 @@ default_queues = {
 }
 
 
+class PickableMock(mock.MagicMock):
+    def __reduce__(self):
+        return (mock.MagicMock, ())
+
+
 class Foo(object):
     pass
 
 
 class Config(object):
 
-    find_value_for_key = MagicMock()
+    find_value_for_key = PickableMock()
 
     def __init__(self, config):
         self.config = config
@@ -36,7 +42,7 @@ class App(object):
     })
 
     def __init__(self):
-        self.log.setup = MagicMock()
+        self.log.setup = PickableMock()
 
 
 class Pool(object):

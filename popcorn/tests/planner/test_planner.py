@@ -7,14 +7,11 @@ from popcorn.apps.planner import PlannerPool, Planner
 from popcorn.apps.planner.commands import start_planner, stop_planner
 from popcorn.apps.planner.strategy.simple import SimpleStrategy
 from popcorn.apps.hub.state import get_worker_cnt, reset_demand
+from popcorn.tests.mock_tool import App
 from popcorn.utils import wait_condition_till_timeout
 
 
 logging.basicConfig(level=logging.CRITICAL)
-
-
-class App(object):
-    conf = {'BROKER_URL': 'foo'}
 
 
 class TestPlanner(unittest.TestCase):
@@ -66,6 +63,7 @@ class TestPlanner(unittest.TestCase):
         self.assertFalse(planner.alive)
 
     def test_planner_pool(self):
+        PlannerPool.reset()
         planner = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
         _planner = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
         self.assertEqual(planner, _planner)
