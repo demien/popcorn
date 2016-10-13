@@ -41,9 +41,11 @@ class TestGuard(unittest.TestCase):
         if wait_condition_till_timeout(self.guard.is_alive, 5, False):
             raise CouldNotStartException('guard')
         Hub.report_demand(InstructionType.WORKER, 'q1', 2)
+        _org_receive_order = commands.receive_order
         commands.receive_order = MagicMock()
         time.sleep(2)
         commands.receive_order.assert_called()
+        commands.receive_order = _org_receive_order
 
     def test_register_to_hub(self):
         reset()

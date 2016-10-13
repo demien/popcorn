@@ -8,9 +8,10 @@ from popcorn.apps.guard import Guard
 from popcorn.apps.planner import PlannerPool
 from popcorn.tests.mock_tool import App, Pool, PickableMock
 from popcorn.utils import start_daemon_thread, wait_condition_till_timeout
+from popcorn.apps.guard import Guard, commands
 
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig()
 
 
 class TestIntegration(unittest.TestCase):
