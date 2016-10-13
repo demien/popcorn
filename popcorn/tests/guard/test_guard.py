@@ -6,7 +6,7 @@ from popcorn.apps.exceptions import CouldNotStartException
 from popcorn.apps.guard import Guard, commands
 from popcorn.apps.hub import MACHINES, PLAN, reset, Hub
 from popcorn.apps.hub.order.instruction import InstructionType
-from popcorn.tests.mock_tool import App, Config
+from popcorn.tests.mock_tool import App
 from popcorn.utils import start_daemon_thread, wait_condition_till_timeout
 
 

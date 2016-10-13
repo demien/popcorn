@@ -14,13 +14,15 @@ class Foo(object):
 class Config(object):
 
     find_value_for_key = MagicMock()
-    get = MagicMock()
 
     def __init__(self, config):
         self.config = config
     
     def __getitem__(self, key):
         return self.config.get(key, '')
+
+    def get(self, key, default=None):
+        return self.config.get(key, default)
 
 
 class App(object):
@@ -30,7 +32,12 @@ class App(object):
         'DEFAULT_QUEUE': default_queues,
         'BROKER_URL': '127.0.0.1',
         'HUB_IP': ip(),
+        'HEALTHY_MOCK': True,
     })
 
     def __init__(self):
         self.log.setup = MagicMock()
+
+
+class Pool(object):
+    pass

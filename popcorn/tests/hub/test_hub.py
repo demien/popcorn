@@ -39,6 +39,12 @@ class TestHub(unittest.TestCase):
         self.assertFalse(self.hub.alive)
         self.assertFalse(self.hub.rpc_server.alive)
 
+    def test_start_default_planner(self):
+        start_daemon_thread(self.hub.start)
+        if wait_condition_till_timeout(self.hub.is_alive, 5, False):
+            raise 'could not start hub'
+        self.assertEqual(PlannerPool.pool.keys(), self.app.conf.config['DEFAULT_QUEUE'].keys())
+
     def test_report_demand(self):
         Hub.report_demand(InstructionType.WORKER, 'q1', 1)
         self.assertEqual(DEMAND.keys(), ['q1'])
