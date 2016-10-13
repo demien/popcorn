@@ -37,7 +37,7 @@ class TestIntegration(unittest.TestCase):
         if wait_condition_till_timeout(self.guard.is_alive, 5, False):
             raise CouldNotStartException('guard')
         self.guard.pool.get_or_create_pool_name = PickableMock(return_value=self.queue)
-        time.sleep(5)
+        time.sleep(2)
         self.guard.pool.grow.assert_called_with(self.queue, self.worker_cnt)
 
     def tearDown(self):
