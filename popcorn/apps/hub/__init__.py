@@ -90,7 +90,8 @@ class Hub(BaseApp):
                 self.analyze_demand()
                 self.send_order_to_guard()
             except Exception as e:
-                error('[Hub] - [Exception] - [Loop] : %s. PID: %s', e.message, get_pid())
+                import traceback;
+                error('[Hub] - [Exception] - [Loop] : %s, %s. PID: %s', e.message, traceback.print_stack(), get_pid())
             finally:
                 time.sleep(self.LOOP_INTERVAL)
         self.alive = False

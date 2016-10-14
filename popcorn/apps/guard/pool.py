@@ -12,7 +12,7 @@ debug, info, warn, error, critical = get_log_obj(__name__)
 class Pool(object):
 
     MIN = 1
-    MAX = 10
+    MAX = 20
 
     def __init__(self, celery_app):
         self.app = celery_app
@@ -24,7 +24,7 @@ class Pool(object):
         return self.pool_map[queue]['name']
 
     @property
-    def info(self):
+    def pinfo(self):
         re = defaultdict(int)
         for queue, info in self.pool_map.iteritems():
             pool = info.get('pool')
@@ -46,8 +46,7 @@ class Pool(object):
             logfile=logfile,
             pidfile=node_format(pidfile, hostname),
             state_db=node_format(state_db, hostname),
-            without_mingle=False,
-            # without_mingle=True,
+            without_mingle=True,
             **kwargs
         )
         start_daemon_thread(pool.start)
@@ -65,12 +64,32 @@ class Pool(object):
             return False
 
     def shrink(self, pool_name, cnt):
-        self.app.control.pool_shrink(cnt, destination=[pool_name])
+        self.shrink_by_worker_pool(cnt, destination=[pool_name])
 
-    def grow(self, pool_name, cnt):
+    def grow(self, queue, cnt):
+        self.grow_by_worker_pool(queue, cnt)
+
+    def grow_by_app_control(self, queue, cnt):
+        pool_name = self.get_or_create_pool_name(queue)
         cnt = min(self.MAX, cnt)
         debug('[Pool] - [Grow] - %s, %s' % (pool_name, str(cnt)))
         self.app.control.pool_grow(cnt, destination=[pool_name])
+
+    def shrink_by_app_control(self, queue, cnt):
+        pool_name = self.get_or_create_pool_name(queue)
+        debug('[Pool] - [Shrink] - %s, %s' % (pool_name, str(cnt)))
+        self.app.control.pool_shrink(cnt, destination=[pool_name])
+
+    def grow_by_worker_pool(self, queue, cnt):
+        cnt = min(self.MAX, cnt)
+        self.get_or_create_pool_name(queue)
+        debug('[Pool] - [Grow] - %s, %s' % (queue, str(cnt)))
+        self.pool_map.get(queue)['pool'].pool.grow(cnt)
+
+    def shrink_by_worker_pool(self, queue, cnt):
+        self.get_or_create_pool_name(queue)
+        debug('[Pool] - [Shrink] - %s, %s' % (queue, str(cnt)))
+        self.pool_map.get(queue)['pool'].pool.shrink(cnt)
 
     @property
     def hostname(self):
