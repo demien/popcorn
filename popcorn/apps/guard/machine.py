@@ -3,7 +3,7 @@ import psutil
 import socket
 from collections import defaultdict
 from datetime import datetime
-from popcorn.utils import ip as _ip, hostname as _hostname
+from popcorn.utils import ip as _ip, hostname as _hostname, white
 
 
 class Machine(object):
@@ -34,8 +34,8 @@ class Machine(object):
             return True
         return self.hardware.healthy
 
-    def snapshot(self):
-        snapshot = self.camera.snapshot()
+    def snapshot(self, extra_info={}):
+        snapshot = self.camera.snapshot(extra_info)
         if len(self.snapshots) >= self.SNAPSHOT_SIZE:
             self.snapshots.pop(0)
         self.snapshots.append(snapshot)
@@ -71,6 +71,10 @@ class CPU(Component):
         return 'cpu'
 
     @property
+    def display_name(self):
+        return 'CPU'
+
+    @property
     def healthy(self):
         return self.value.idle > self.IDLE_THRESHOLD
 
@@ -88,6 +92,10 @@ class Memory(Component):
     @property
     def name(self):
         return 'memory'
+
+    @property
+    def display_name(self):
+        return 'Memory'
 
     @property
     def healthy(self):
@@ -111,7 +119,10 @@ class Hardware(object):
         return all([c.healthy for c in self.COMPONENTS])
 
     def to_string(self):
-        return '\n'.join(['\t%s: %s ' % (component.name, component.value) for component in self.COMPONENTS])
+        return '\n'.join(['\t%s: %s ' % (component.display_name, component.value) for component in self.COMPONENTS])
+
+    def to_term(self):
+        return '\n'.join(['\t%s: %s ' % (white(component.display_name), component.value) for component in self.COMPONENTS])
 
 
 class Camera(object):
@@ -119,10 +130,11 @@ class Camera(object):
     def __init__(self, machine):
         self.machine = machine
 
-    def snapshot(self):
+    def snapshot(self, extra_info={}):
         snapshot = {
             'time': datetime.now(),
             'healthy': self.machine.healthy,
-            'hardware': self.machine.hardware.to_string(),
+            'hardware': self.machine.hardware.to_term(),
         }
+        snapshot.update({'extra': extra_info})
         return snapshot

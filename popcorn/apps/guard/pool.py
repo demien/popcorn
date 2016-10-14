@@ -30,7 +30,7 @@ class Pool(object):
             pool = info.get('pool')
             if pool is not None:
                 re[queue] = pool.pool.num_processes
-        return re
+        return {'Queue & Cnt': re}
 
     def create_pool(self, queue, pool_cls=None, loglevel=None, logfile=None, pidfile=None, state_db=None):
         kwargs = {

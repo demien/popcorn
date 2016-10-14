@@ -80,7 +80,7 @@ class Guard(BaseApp):
         self.alive = False
 
     def heartbeat(self, rpc_client):
-        self.machine.snapshot()
+        self.machine.snapshot(self.pool.pinfo)
         debug('[Guard] - [Send] - [HeartBeat]')
         rpc_client.call('popcorn.apps.hub.commands.update_machine', machine=self.machine)
 
