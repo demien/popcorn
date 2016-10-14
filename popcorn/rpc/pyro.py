@@ -117,7 +117,7 @@ class PyroClient(BaseRPCClient, PyroBase):
         try:
             return self.default_proxy.dispatch(path, *args, **kwargs)
         except Exception as e:
-            error('[RPC Client] - [Call] - [Error]: %s' % e.message)
+            error('[RPC Client] - [Call] - [Error]: %s, %s' % (e.message, path))
 
     def get_proxy_obj(self, uri):
         return Pyro4.Proxy(uri)

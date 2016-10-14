@@ -2,7 +2,7 @@ import time
 from celery import concurrency
 from celery.utils import host_format, default_nodename, node_format
 from collections import defaultdict
-from popcorn.utils.log import get_log_obj
+from popcorn.utils import get_log_obj, start_daemon_thread
 from multiprocessing import Process
 
 
@@ -16,12 +16,21 @@ class Pool(object):
 
     def __init__(self, celery_app):
         self.app = celery_app
-        self.pool_map = defaultdict(int)
+        self.pool_map = defaultdict(lambda: defaultdict(lambda: None))
 
     def get_or_create_pool_name(self, queue):
         if not self.pool_map.get(queue):
             self.pool_map[queue] = self.create_pool(queue)
         return self.pool_map[queue]['name']
+
+    @property
+    def info(self):
+        re = defaultdict(int)
+        for queue, info in self.pool_map.iteritems():
+            pool = info.get('pool')
+            if pool is not None:
+                re[queue] = pool.pool.num_processes
+        return re
 
     def create_pool(self, queue, pool_cls=None, loglevel=None, logfile=None, pidfile=None, state_db=None):
         kwargs = {
@@ -38,26 +47,22 @@ class Pool(object):
             pidfile=node_format(pidfile, hostname),
             state_db=node_format(state_db, hostname),
             without_mingle=False,
+            # without_mingle=True,
             **kwargs
         )
-        process = Process(target=self.start_pool, args=(pool, ))
-        process.daemon = True
-        process.start()
-
+        start_daemon_thread(pool.start)
         if self.check_pool_start(hostname):
-           return {'name': hostname, 'pool': pool}
+            return {'name': hostname, 'pool': pool}
         else:
             return None
 
     def check_pool_start(self, destination):
-        process = Process(target=self.app.control.ping, args=([destination], ))
-        process.start()
-        process.join()
-        time.sleep(5)
-        return True
-
-    def start_pool(self, pool):
-        pool.start()
+        try:
+            self.app.control.ping([destination], 5)
+            ping_result = self.app.control.ping([destination], 5)
+            return ping_result[0][destination] == {u'ok': u'pong'}
+        except:
+            return False
 
     def shrink(self, pool_name, cnt):
         self.app.control.pool_shrink(cnt, destination=[pool_name])
