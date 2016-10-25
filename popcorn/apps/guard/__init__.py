@@ -21,10 +21,14 @@ class Guard(BaseApp):
         self.rpc_server = PyroServer(GUARD_PORT)
         self.rpc_client = PyroClient(self.app.conf['HUB_IP'], HUB_PORT)
         self.pool = Pool(self.app)
-        self.machine = Machine(healthy_mock=app.conf['HEALTHY_MOCK'])
+        self.machine = Machine(healthy_mock=app.conf['HEALTHY_MOCK'], labels=self.labels)
         self.__shutdown_guard = threading.Event()
         self.LOOP_INTERVAL = 10  # second
         self.alive = False
+
+    def setup_defaults(self, **_kw):
+        super(Guard, self).setup_defaults(**_kw)
+        self.labels = _kw.get('labels', '').split(',')
 
     def start(self, condition=lambda: True):
         """

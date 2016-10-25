@@ -15,4 +15,5 @@ class PlannerCommand(BaseCommand):
             Option('-Q', '--queue'),
             Option('-S', '--strategy', default='simple'),
             Option('-l', '--loglevel'),
+            Option('--labels', default=''),
         )

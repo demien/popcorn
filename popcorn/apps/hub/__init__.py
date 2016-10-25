@@ -73,8 +73,8 @@ class Hub(BaseApp):
 
     def _start_default_planners(self):
         from popcorn.apps.planner.commands import start_planner
-        for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            start_planner(self.app, queue, strategy)
+        for queue, value in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
+            start_planner(self.app, queue, value.get('strategy', 'simple'),  value.get('labels', '').split(','))
 
     def _start_loop(self, condition):
         """
@@ -121,12 +121,17 @@ class Hub(BaseApp):
             remove_demand(queue)
 
     def load_balancing(self, queue, worker_cnt):
+        from popcorn.apps.planner import PlannerPool
         healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
         if not healthy_machines:
             warn('[Hub] - [Warning] : No Healthy Machines!')
             return False
-        worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
-        for machine in healthy_machines:
+        available_machines = [machine for machine in healthy_machines if all(map(lambda lable: lable in machine.labels, PlannerPool.get_or_create_planner(queue).labels))]
+        if not available_machines:
+            warn('[Hub] - [Warning] : No Available Machines!')
+            return False
+        worker_per_machine = int(math.ceil(worker_cnt / len(available_machines)))
+        for machine in available_machines:
             info('[Hub] - [Start] - [Load Balance] : {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
             add_plan(queue, machine.id, worker_per_machine)
         return True

@@ -30,12 +30,14 @@ class RegisterPlanner(BaseApp):
         self.rpc_client.call('popcorn.apps.planner.commands:start_planner',
                               app=self.app,
                               queue=self.queue,
-                              strategy_name=self.strategy_name)
+                              strategy_name=self.strategy_name,
+                              labels=self.labels)
 
-    def setup_defaults(self, loglevel=None, logfile=None, queue=None, strategy=None, **_kw):
-        super(RegisterPlanner, self).setup_defaults(loglevel=None, logfile=None, queue=None, strategy=None, **_kw)
-        self.queue = self._getopt('queue', queue)
-        self.strategy_name = self._getopt('strategy', strategy)
+    def setup_defaults(self, **_kw):
+        super(RegisterPlanner, self).setup_defaults(**_kw)
+        self.queue = _kw.get('queue')
+        self.strategy_name = _kw.get('strategy')
+        self.labels = _kw.get('labels', '').split(',')
 
 
 class PlannerPool(object):
@@ -46,10 +48,10 @@ class PlannerPool(object):
         cls.pool.clear()
 
     @classmethod
-    def get_or_create_planner(cls, app, queue, strategy_name):
+    def get_or_create_planner(cls, queue, app=None, strategy_name='simple', labels=['']):
         planner = cls.pool.get(queue)
         if planner is None:
-            planner = Planner(app, queue, strategy_name)
+            planner = Planner(app, queue, strategy_name, labels)
             cls.pool[queue] = planner
         return planner
 
@@ -65,16 +67,16 @@ class PlannerPool(object):
 
 class Planner(object):
 
-    def __init__(self, app, queue, strategy_name):
+    def __init__(self, app, queue, strategy_name, labels=['']):
         self.app = app or self.app
         self.queue = queue
         self.thread = None
-        self.load_strategy(strategy_name)
+        self.load(strategy_name, labels)
         self.__shutdown = threading.Event()
         self.loop_interval = 5
 
     def __repr__(self):
-        return 'Queue: %s Strategy: %s' % (self.queue, self.strategy.name)
+        return 'Queue: %s. Strategy: %s. Labels: %s.' % (self.queue, self.strategy.name, self.labels)
 
     def __eq__(self, another):
         return self.queue == another.queue and self.strategy == another.strategy
@@ -109,15 +111,16 @@ class Planner(object):
     def force_quit(self):
         start_daemon_thread(terminate_thread, args=(self.thread,))
 
-    def load_strategy(self, strategy_name):
-        debug('[Planner] - [Load Strategy] - %s' % strategy_name)
+    def load(self, strategy_name, labels):
         self.strategy = call_callable(STRATEGY_MAP[strategy_name])
+        self.labels = labels
+        debug('[Planner] - [Load] - %s' % self)
 
     def loop(self, condition=lambda: True):
         status = taste_soup(self.queue, self.app.conf['BROKER_URL'])
         while condition and not self.__shutdown.isSet():
             try:
-                debug('[Planner] - [Send] - [HeartBeat] : %s. PID: %s', self, get_pid())
+                debug('[Planner] - [Send] - [HeartBeat] : %s PID: %s', self, get_pid())
                 previous_timestamp = int(round(time.time() * TIME_SCALE))
                 previous_status = status
                 time.sleep(self.loop_interval)

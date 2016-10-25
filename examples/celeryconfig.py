@@ -10,8 +10,12 @@ CELERY_IMPORTS = (
     "tasks",
 )
 DEFAULT_QUEUE = {
-    'popcorn': 'simple',
-    'demien': 'simple',
+    'popcorn': {
+        'strategy': 'simple',
+    },
+    'demien': {
+        'strategy': 'simple',
+    }
 }
 HUB_IP = socket.gethostbyname(socket.gethostname())
 HUB_IP = '172.17.0.2'
