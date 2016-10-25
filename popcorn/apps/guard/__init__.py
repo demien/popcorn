@@ -74,20 +74,20 @@ class Guard(BaseApp):
                     debug('[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions]))
                     self.follow_order(order)
             except Exception as e:
-                error('[Guard] - [Exception] - [Loop] : %s. PID: %s', e.message, get_pid())
+                import traceback; traceback.print_exc()
+                error('[Guard] - [Exception] - [Loop] : %s. PID: %s' % (e.message, get_pid()))
             finally:
                 time.sleep(self.LOOP_INTERVAL)
         self.alive = False
 
     def heartbeat(self, rpc_client):
-        snapshot = self.machine.snapshot()
+        self.machine.snapshot(self.pool.pinfo)
         debug('[Guard] - [Send] - [HeartBeat]')
         rpc_client.call('popcorn.apps.hub.commands.update_machine', machine=self.machine)
 
     def follow_order(self, order):
         for instruction in order.instructions:
-            pool_name = self.pool.get_or_create_pool_name(instruction.queue)
             if instruction.operator == Operator.INC:
-                self.pool.grow(pool_name, instruction.worker_cnt)
+                self.pool.grow(instruction.queue, instruction.worker_cnt)
             elif instruction.operator == Operator.DEC:
-                self.pool.shrink(pool_name, instruction.worker_cnt)
+                self.pool.shrink(instruction.queue, instruction.worker_cnt)

@@ -1,5 +1,6 @@
 from celery import bootsteps
 from popcorn.rpc.pyro import PyroClient, HUB_PORT
+from popcorn.utils import red, yellow, white, green, blue
 
 
 class ScanTarget(object):
@@ -18,6 +19,7 @@ class Scan(object):
     '''
     SEPERATOR = '-' * 20
     TAB = '\t'
+    BREAK = '\n'
 
     def __init__(self, app, target):
         self.app = app or self.app
@@ -26,21 +28,26 @@ class Scan(object):
 
     def start(self):
         re = self.rpc_client.call('popcorn.apps.hub.commands.scan', target=self.target)
-        print self.HEADER_PATTERN % self.target
+        print white(self.HEADER_PATTERN % self.target)
         if self.target == ScanTarget.MACHINE:
             self._scan_machine(re)
         if self.target == ScanTarget.PLANNER:
             self._scan_planner(re)
-        print self.FOOTER
+        print white(self.FOOTER)
 
     def _scan_machine(self, machines):
         for id, machine in machines.iteritems():
             snapshot = machine.snapshots[-1]
             print self.TAB, self.SEPERATOR
-            print self.TAB, 'id: %s' % id
-            print self.TAB, 'update_time: %s' % snapshot['time']
-            print self.TAB, 'healthy: %s' % snapshot['healthy']
+            print self.TAB, '%s: %s' % (white('ID'), blue(id))
+            print self.TAB, '%s: %s' % (white('Update Time'), snapshot['time'])
+            print self.TAB, '%s: %s' % (white('Healthy'), green(snapshot['healthy']) if snapshot['healthy'] else red(snapshot['healthy']))
+            for key, value in snapshot['extra'].iteritems():
+                print self.TAB, '%s:' % white(key)
+                for _key, _value in value.iteritems():
+                    print self.TAB, self.TAB, '%s: %s' % (white(_key), _value)
             print snapshot['hardware']
+            print self.BREAK
 
     def _scan_planner(self, planners):
         for queue, strategy in planners.iteritems():

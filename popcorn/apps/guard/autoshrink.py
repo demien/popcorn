@@ -107,7 +107,7 @@ class Autoshrink(bgThread):
                 return self._shrink(n)
         else:
             self._last_action = monotonic()
-            return self._shrink(n)
+            # return self._shrink(n)
 
     def _grow(self, n):
         info('Scaling up %s processes.', n)
