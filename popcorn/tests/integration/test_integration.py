@@ -11,7 +11,7 @@ from popcorn.utils import start_daemon_thread, wait_condition_till_timeout
 from popcorn.apps.guard import Guard, commands
 
 
-logging.basicConfig()
+logging.basicConfig(level=logging.CRITICAL)
 
 
 class TestIntegration(unittest.TestCase):

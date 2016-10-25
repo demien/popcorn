@@ -46,4 +46,7 @@ class App(object):
 
 
 class Pool(object):
-    pass
+
+    @property
+    def pinfo(self):
+        return {}

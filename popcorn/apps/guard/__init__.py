@@ -74,7 +74,8 @@ class Guard(BaseApp):
                     debug('[Guard] - [Get Order]: %s' % ','.join([i.cmd for i in order.instructions]))
                     self.follow_order(order)
             except Exception as e:
-                error('[Guard] - [Exception] - [Loop] : %s. PID: %s', e.message, get_pid())
+                import traceback; traceback.print_exc()
+                error('[Guard] - [Exception] - [Loop] : %s. PID: %s' % (e.message, get_pid()))
             finally:
                 time.sleep(self.LOOP_INTERVAL)
         self.alive = False
