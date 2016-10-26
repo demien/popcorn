@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.CRITICAL)
 class TestPlanner(unittest.TestCase):
     queue = 'foo'
     strategy_name = 'simple'
+    labels = []
     app = App()
 
     def setUp(self):
@@ -55,7 +56,7 @@ class TestPlanner(unittest.TestCase):
         self.assertTrue(get_worker_cnt(self.queue) == 0)
 
     def test_command(self):
-        planner = start_planner(self.app, self.queue, self.strategy_name)
+        planner = start_planner(self.app, self.queue, self.strategy_name, self.labels)
         planner.loop_interval = 0.1
         self.assertTrue(planner.alive)
         _planner = stop_planner(self.queue)
@@ -64,14 +65,14 @@ class TestPlanner(unittest.TestCase):
 
     def test_planner_pool(self):
         PlannerPool.reset()
-        planner = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
-        _planner = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
+        planner = PlannerPool.get_or_create_planner(self.queue, self.app,self.strategy_name, self.labels)
+        _planner = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, self.labels)
         self.assertEqual(planner, _planner)
         self.assertEqual(PlannerPool.stats().keys(), [self.queue])
 
     def test_planner_pool_stop(self):
-        planner_1 = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
-        planner_2 = PlannerPool.get_or_create_planner(self.app, 'q2', self.strategy_name)
+        planner_1 = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, self.labels)
+        planner_2 = PlannerPool.get_or_create_planner('q2', self.app, self.strategy_name, self.labels)
         PlannerPool.stop()
         self.assertFalse(planner_1.alive)
         self.assertFalse(planner_2.alive)

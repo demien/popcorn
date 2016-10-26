@@ -3,8 +3,12 @@ import mock
 from popcorn.utils import ip
 
 default_queues = {
-    'q1': 'simple',
-    'q2': 'simple',
+    'q1': {
+        'strategy': 'simple',
+    },
+    'q2': {
+        'strategy': 'simple',
+    }
 }
 
 

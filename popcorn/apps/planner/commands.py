@@ -13,7 +13,6 @@ def start_planner(app, queue, strategy_name, labels):
     else:
         planner.start()
         info('[Planner] - [Register] - %s' % planner)
-    
     return planner
 
 

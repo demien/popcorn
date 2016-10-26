@@ -25,9 +25,10 @@ class TestIntegration(unittest.TestCase):
     queue = app.conf.config['DEFAULT_QUEUE'].keys()[0]
     strategy_name = app.conf.config['DEFAULT_QUEUE'].values()[0]
     worker_cnt = 1
+    labels = []
 
     def test_worker_pool_grow(self):
-        planner = PlannerPool.get_or_create_planner(self.app, self.queue, self.strategy_name)
+        planner = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, self.labels)
         planner.loop_interval = 0.1
         planner.strategy.apply = PickableMock(return_value=self.worker_cnt)
         start_daemon_thread(self.hub.start)
