@@ -42,10 +42,13 @@ class Scan(object):
             print self.TAB, '%s: %s' % (white('ID'), blue(id))
             print self.TAB, '%s: %s' % (white('Update Time'), snapshot['time'])
             print self.TAB, '%s: %s' % (white('Healthy'), green(snapshot['healthy']) if snapshot['healthy'] else red(snapshot['healthy']))
+            if snapshot.get('labels', None) is not None:
+                print self.TAB, '%s: %s' % (white('Labels'), ','.join(snapshot['labels']))
             for key, value in snapshot['extra'].iteritems():
-                print self.TAB, '%s:' % white(key)
-                for _key, _value in value.iteritems():
-                    print self.TAB, self.TAB, '%s: %s' % (white(_key), _value)
+                if value:
+                    print self.TAB, '%s:' % white(key)
+                    for _key, _value in value.iteritems():
+                        print self.TAB, self.TAB, '%s: %s' % (white(_key), _value)
             print snapshot['hardware']
             print self.BREAK
 

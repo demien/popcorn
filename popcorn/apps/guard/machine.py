@@ -10,12 +10,16 @@ class Machine(object):
 
     SNAPSHOT_SIZE = 10
 
-    def __init__(self, healthy_mock=False):
+    def __init__(self, healthy_mock=False, labels=[]):
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
         self.id = self.get_id()
         self.healthy_mock = healthy_mock
+        self.labels = labels
+
+    def __repr__(self):
+        return 'ID: %s. Labels: %s.' % (self.id, ','.join(self.labels))
 
     @property
     def ip(self):
@@ -33,6 +37,9 @@ class Machine(object):
         if self.healthy_mock:
             return True
         return self.hardware.healthy
+
+    def set_labels(self, labels):
+        self.labels = labels
 
     def snapshot(self, extra_info={}):
         snapshot = self.camera.snapshot(extra_info)
@@ -136,5 +143,7 @@ class Camera(object):
             'healthy': self.machine.healthy,
             'hardware': self.machine.hardware.to_term(),
         }
+        if self.machine.labels:
+            snapshot['labels'] = self.machine.labels
         snapshot.update({'extra': extra_info})
         return snapshot

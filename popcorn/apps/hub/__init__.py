@@ -10,9 +10,12 @@ from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
 from popcorn.rpc.pyro import PyroServer, PyroClient, HUB_PORT, GUARD_PORT
-from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout
+from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout, in_array
 from popcorn.apps.exceptions import CouldNotStopException, CouldNotStartException
-from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt, reset, reset_machine
+from .state import (
+    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt, reset, reset_machine,
+    get_healthy_machines
+)
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
@@ -73,8 +76,8 @@ class Hub(BaseApp):
 
     def _start_default_planners(self):
         from popcorn.apps.planner.commands import start_planner
-        for queue, strategy in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            start_planner(self.app, queue, strategy)
+        for queue, value in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
+            start_planner(self.app, queue, value.get('strategy', 'simple'),  value.get('labels', '').split(',') if value.get('labels', '') else [])
 
     def _start_loop(self, condition):
         """
@@ -121,12 +124,17 @@ class Hub(BaseApp):
             remove_demand(queue)
 
     def load_balancing(self, queue, worker_cnt):
-        healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
+        from popcorn.apps.planner import PlannerPool
+        healthy_machines = get_healthy_machines()
         if not healthy_machines:
             warn('[Hub] - [Warning] : No Healthy Machines!')
             return False
-        worker_per_machine = int(math.ceil(worker_cnt / len(healthy_machines)))
-        for machine in healthy_machines:
+        available_machines = [machine for machine in healthy_machines if in_array(PlannerPool.get_planner(queue).labels, machine.labels)]
+        if not available_machines:
+            warn('[Hub] - [Warning] : No Available Machines!')
+            return False
+        worker_per_machine = int(math.ceil(worker_cnt / len(available_machines)))
+        for machine in available_machines:
             info('[Hub] - [Start] - [Load Balance] : {%s} take %d workers on #%s' % (machine.id, worker_per_machine, queue))
             add_plan(queue, machine.id, worker_per_machine)
         return True

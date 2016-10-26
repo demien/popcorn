@@ -5,13 +5,14 @@ from popcorn.utils import get_log_obj
 debug, info, warn, error, critical = get_log_obj(__name__)
 
 
-def start_planner(app, queue, strategy_name):
-    info('[Planner] - [Register] - Queue: %s, Strategy: %s' % (queue, strategy_name))
-    planner = PlannerPool.get_or_create_planner(app, queue, strategy_name)
+def start_planner(app, queue, strategy_name, labels):
+    planner = PlannerPool.get_or_create_planner(queue, app, strategy_name, labels)
     if planner.alive:
-        planner.load_strategy(strategy_name)
+        planner.load(strategy_name, labels)
+        info('[Planner] - [Load] - %s' % planner)
     else:
         planner.start()
+        info('[Planner] - [Register] - %s' % planner)
     return planner
 
 
