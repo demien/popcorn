@@ -59,6 +59,11 @@ class TestGuard(unittest.TestCase):
         self.assertEqual(len(MACHINES), 1)
         self.assertEqual(MACHINES.keys(), [self.guard.machine.id])
 
+    def test_label(self):
+        labels = 'a,b'
+        guard = Guard(self.app, **{'labels': labels})
+        self.assertEqual(guard.machine.labels, labels.split(','))
+
     def tearDown(self):
         if self.hub.alive:
             self.hub.stop()
