@@ -71,6 +71,10 @@ def reset_machine():
     MACHINES.clear()
 
 
+def get_healthy_machines():
+    return [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
+
+
 #: All the planner. It's a dict. Key is queue name.
 PLANNERS = defaultdict(lambda: None)
 

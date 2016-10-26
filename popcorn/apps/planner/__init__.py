@@ -48,12 +48,20 @@ class PlannerPool(object):
         cls.pool.clear()
 
     @classmethod
-    def get_or_create_planner(cls, queue, app=None, strategy_name='simple', labels=['']):
-        planner = cls.pool.get(queue)
+    def get_or_create_planner(cls, queue, app, strategy_name, labels):
+        planner = cls.get_planner(queue)
         if planner is None:
-            planner = Planner(app, queue, strategy_name, labels)
+            planner = PlannerPool.create_planner(app, queue, strategy_name, labels)
             cls.pool[queue] = planner
         return planner
+
+    @classmethod
+    def get_planner(cls, queue):
+        return cls.pool.get(queue)
+
+    @staticmethod
+    def create_planner(app, queue, strategy_name, labels):
+        return Planner(app, queue, strategy_name, labels)
 
     @classmethod
     def stats(cls):

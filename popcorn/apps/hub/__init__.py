@@ -10,9 +10,12 @@ from popcorn.apps.base import BaseApp
 from popcorn.apps.hub.order import Order
 from popcorn.apps.hub.order.instruction import Instruction, WorkerInstruction, InstructionType
 from popcorn.rpc.pyro import PyroServer, PyroClient, HUB_PORT, GUARD_PORT
-from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout
+from popcorn.utils import get_log_obj, get_pid, wait_condition_till_timeout, in_array
 from popcorn.apps.exceptions import CouldNotStopException, CouldNotStartException
-from .state import DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt, reset, reset_machine
+from .state import (
+    DEMAND, PLAN, MACHINES, add_demand, remove_demand, add_plan, pop_order, get_worker_cnt, reset, reset_machine,
+    get_healthy_machines
+)
 
 
 debug, info, warn, error, critical = get_log_obj(__name__)
@@ -122,11 +125,11 @@ class Hub(BaseApp):
 
     def load_balancing(self, queue, worker_cnt):
         from popcorn.apps.planner import PlannerPool
-        healthy_machines = [machine for machine in MACHINES.values() if machine.snapshots[-1]['healthy']]
+        healthy_machines = get_healthy_machines()
         if not healthy_machines:
             warn('[Hub] - [Warning] : No Healthy Machines!')
             return False
-        available_machines = [machine for machine in healthy_machines if all(map(lambda lable: lable in machine.labels, PlannerPool.get_or_create_planner(queue).labels))]
+        available_machines = [machine for machine in healthy_machines if in_array(PlannerPool.get_planner(queue).labels, machine.labels)]
         if not available_machines:
             warn('[Hub] - [Warning] : No Available Machines!')
             return False
