@@ -71,6 +71,7 @@ class PlannerPool(object):
     def stop(cls):
         for planner in cls.pool.values():
             planner.stop()
+            cls.reset()
 
 
 class Planner(object):

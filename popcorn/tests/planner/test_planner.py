@@ -68,6 +68,8 @@ class TestPlanner(unittest.TestCase):
         _planner = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, self.labels)
         self.assertEqual(planner, _planner)
         self.assertEqual(PlannerPool.stats().keys(), [self.queue])
+        planner.stop()
+        _planner.stop()
 
     def test_planner_pool_stop(self):
         planner_1 = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, self.labels)
@@ -75,11 +77,14 @@ class TestPlanner(unittest.TestCase):
         PlannerPool.stop()
         self.assertFalse(planner_1.alive)
         self.assertFalse(planner_2.alive)
+        planner_1.stop()
+        planner_2.stop()
 
     def test_labels(self):
         labels = ['a', 'b']
         planner = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, labels)
         self.assertEqual(planner.labels, labels)
+        planner.stop()
 
     def test_load(self):
         planner = PlannerPool.get_or_create_planner(self.queue, self.app, self.strategy_name, self.labels)
@@ -88,6 +93,7 @@ class TestPlanner(unittest.TestCase):
         new_labels = ['a', 'b']
         planner.load(new_strategy_name, new_labels)
         self.assertEqual(planner.labels, new_labels)
+        planner.stop()
 
     def tearDown(self):
         PlannerPool.reset()
