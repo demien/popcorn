@@ -74,7 +74,7 @@ class Hub(BaseApp):
     def _start_default_planners(self):
         from popcorn.apps.planner.commands import start_planner
         for queue, value in self.app.conf.get('DEFAULT_QUEUE', {}).iteritems():
-            start_planner(self.app, queue, value.get('strategy', 'simple'),  value.get('labels', '').split(','))
+            start_planner(self.app, queue, value.get('strategy', 'simple'),  value.get('labels', '').split(',') if value.get('labels', '') else [])
 
     def _start_loop(self, condition):
         """

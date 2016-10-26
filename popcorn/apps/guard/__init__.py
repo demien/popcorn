@@ -28,7 +28,7 @@ class Guard(BaseApp):
 
     def setup_defaults(self, **_kw):
         super(Guard, self).setup_defaults(**_kw)
-        self.labels = _kw.get('labels', '').split(',')
+        self.labels = _kw.get('labels', '').split(',') if _kw.get('labels', '') else []
 
     def start(self, condition=lambda: True):
         """

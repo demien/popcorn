@@ -67,7 +67,7 @@ class PlannerPool(object):
 
 class Planner(object):
 
-    def __init__(self, app, queue, strategy_name, labels=['']):
+    def __init__(self, app, queue, strategy_name, labels=[]):
         self.app = app or self.app
         self.queue = queue
         self.thread = None
@@ -76,7 +76,7 @@ class Planner(object):
         self.loop_interval = 5
 
     def __repr__(self):
-        return 'Queue: %s. Strategy: %s. Labels: %s.' % (self.queue, self.strategy.name, self.labels)
+        return 'Queue: %s. Strategy: %s. Labels: %s.' % (self.queue, self.strategy.name, ','.join(self.labels) or None)
 
     def __eq__(self, another):
         return self.queue == another.queue and self.strategy == another.strategy

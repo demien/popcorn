@@ -10,13 +10,16 @@ class Machine(object):
 
     SNAPSHOT_SIZE = 10
 
-    def __init__(self, healthy_mock=False, labels=''):
+    def __init__(self, healthy_mock=False, labels=[]):
         self.hardware = Hardware()
         self.camera = Camera(self)
         self.snapshots = []  # lastest n snapshot
         self.id = self.get_id()
         self.healthy_mock = healthy_mock
         self.labels = labels
+
+    def __repr__(self):
+        return 'ID: %s. Labels: %s.' % (self.id, ','.join(self.labels))
 
     @property
     def ip(self):
